@@ -1,0 +1,105 @@
+---
+// src/pages/settings.astro
+// Onyx Knowledge Workspace — Settings & Configuration
+import AppLayout from '../layouts/AppLayout.astro';
+---
+
+<AppLayout title="Settings — Onyx Knowledge Workspace" activeRoute="settings" pageTitle="Settings">
+  <div class="page-workspace">
+    <div class="page-header">
+      <div class="page-title-group">
+        <h1 class="page-title">Workspace Settings</h1>
+        <p class="page-subtitle">Personal preferences, visual display modes, and backend connection details</p>
+      </div>
+    </div>
+
+    <div class="page-body-scroll">
+      <div class="page-content-container">
+        <!-- Section 1: Frontend UI Preferences -->
+        <div class="onyx-card">
+          <div class="onyx-card-header">
+            <span class="onyx-card-title">Display & Appearance</span>
+          </div>
+
+          <div style="display:flex; flex-direction:column; gap:16px;">
+            <!-- Theme Selection -->
+            <div style="display:flex; align-items:center; justify-content:space-between;">
+              <div>
+                <div style="font-weight:600; font-size:var(--text-sm);">Color Theme</div>
+                <div style="font-size:var(--text-xs); color:var(--text-muted);">Choose between futuristic deep dark and crisp light theme</div>
+              </div>
+              <div style="display:flex; gap:8px;">
+                <button class="btn-secondary" id="btnSetThemeDark" style="padding:6px 14px; font-size:12px;">Dark</button>
+                <button class="btn-secondary" id="btnSetThemeLight" style="padding:6px 14px; font-size:12px;">Light</button>
+              </div>
+            </div>
+
+            <div style="height:1px; background:var(--border-subtle);"></div>
+
+            <!-- Reduced Motion -->
+            <div style="display:flex; align-items:center; justify-content:space-between;">
+              <div>
+                <div style="font-weight:600; font-size:var(--text-sm);">3D Background Particles</div>
+                <div style="font-size:var(--text-xs); color:var(--text-muted);">Toggle rotating geometric wireframes and floating network filaments</div>
+              </div>
+              <label style="display:inline-flex; align-items:center; cursor:pointer;">
+                <input type="checkbox" id="chkAmbientCanvas" checked style="width:18px; height:18px; accent-color:var(--brand-primary);" />
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section 2: Backend & Onyx Service Configuration -->
+        <div class="onyx-card">
+          <div class="onyx-card-header">
+            <div>
+              <span class="onyx-card-title">Onyx Upstream Origin</span>
+              <p style="font-size:var(--text-xs); color:var(--text-muted); margin-top:2px;">Configured API proxy and endpoint boundary</p>
+            </div>
+            <span class="status-badge success">Online</span>
+          </div>
+
+          <div style="display:flex; flex-direction:column; gap:12px; font-size:var(--text-xs);">
+            <div style="display:flex; justify-content:space-between; padding:8px 12px; background:var(--bg-app); border:1px solid var(--border-subtle); border-radius:var(--radius-sm);">
+              <span style="color:var(--text-muted);">API Target:</span>
+              <span style="font-family:var(--font-mono); font-weight:600;">http://127.0.0.1:8080</span>
+            </div>
+
+            <div style="display:flex; justify-content:space-between; padding:8px 12px; background:var(--bg-app); border:1px solid var(--border-subtle); border-radius:var(--radius-sm);">
+              <span style="color:var(--text-muted);">Proxy Route:</span>
+              <span style="font-family:var(--font-mono); font-weight:600;">/api/* &rarr; http://127.0.0.1:8080/api/*</span>
+            </div>
+
+            <div style="display:flex; justify-content:space-between; padding:8px 12px; background:var(--bg-app); border:1px solid var(--border-subtle); border-radius:var(--radius-sm);">
+              <span style="color:var(--text-muted);">Astro Dev Server:</span>
+              <span style="font-family:var(--font-mono); font-weight:600;">http://localhost:4321</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const darkBtn = document.getElementById('btnSetThemeDark')!;
+    const lightBtn = document.getElementById('btnSetThemeLight')!;
+    const canvasToggle = document.getElementById('chkAmbientCanvas') as HTMLInputElement;
+
+    darkBtn.addEventListener('click', () => {
+      document.documentElement.setAttribute('data-theme', 'dark');
+      localStorage.setItem('onyx_theme', 'dark');
+    });
+
+    lightBtn.addEventListener('click', () => {
+      document.documentElement.setAttribute('data-theme', 'light');
+      localStorage.setItem('onyx_theme', 'light');
+    });
+
+    canvasToggle.addEventListener('change', () => {
+      const canvas = document.getElementById('ambientCanvas');
+      if (canvas) {
+        canvas.style.display = canvasToggle.checked ? 'block' : 'none';
+      }
+    });
+  </script>
+</AppLayout>

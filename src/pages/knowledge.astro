@@ -1,0 +1,178 @@
+---
+// src/pages/knowledge.astro
+// Onyx Knowledge Workspace — Knowledge Sources & Connector Management
+import AppLayout from '../layouts/AppLayout.astro';
+---
+
+<AppLayout title="Knowledge Sources — Onyx Knowledge Workspace" activeRoute="knowledge" pageTitle="Knowledge Sources">
+  <div class="page-workspace">
+    <div class="page-header">
+      <div class="page-title-group">
+        <h1 class="page-title">Knowledge Library & Connectors</h1>
+        <p class="page-subtitle">Manage ingested enterprise documents, connectors, and semantic vector indexing</p>
+      </div>
+
+      <div style="display:flex; gap:8px;">
+        <input type="file" id="knowledgeUploadInput" multiple style="display:none;" />
+        <button class="btn-primary" id="btnUploadKnowledge">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"></path>
+          </svg>
+          <span>Upload Documents</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="page-body-scroll">
+      <div class="page-content-container">
+        <!-- Live Ingestion Status Banner -->
+        <div id="ingestProgressBanner" style="display:none; padding:10px 14px; border-radius:var(--radius-md); background:rgba(99,102,241,0.12); border:1px solid var(--border-medium); font-size:13px; color:var(--text-main); align-items:center; gap:8px;">
+          <svg class="spinner-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10" stroke-dasharray="45" stroke-dashoffset="15"></circle></svg>
+          <span id="ingestProgressText">Ingesting files...</span>
+        </div>
+
+        <!-- Section 1: Ingested Document Catalog (Real Backend Data) -->
+        <div class="onyx-card">
+          <div class="onyx-card-header">
+            <div>
+              <span class="onyx-card-title">Indexed Documents (<span id="totalDocCount">0</span>)</span>
+              <p style="font-size:var(--text-xs); color:var(--text-muted); margin-top:2px;">Local SQLite catalog and float32 vector chunks</p>
+            </div>
+          </div>
+
+          <div id="knowledgeDocList" style="display:flex; flex-direction:column; gap:8px;">
+            <div style="color:var(--text-muted);font-size:13px;padding:8px 0;">Loading document catalog...</div>
+          </div>
+        </div>
+
+        <!-- Section 2: Connected Knowledge Sources (Onyx Enterprise Connectors) -->
+        <div class="onyx-card">
+          <div class="onyx-card-header">
+            <div>
+              <span class="onyx-card-title">Connected Sources</span>
+              <p style="font-size:var(--text-xs); color:var(--text-muted); margin-top:2px;">Automated external synchronization pipelines</p>
+            </div>
+            <span class="status-badge mock">Adapter Mocks</span>
+          </div>
+
+          <div id="connectorList" class="grid-3">
+            <!-- Dynamically populated connectors -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    import { listDocuments, uploadDocuments, removeDocument } from '../lib/onyx/documents';
+    import { listConnectors } from '../lib/onyx/search';
+    import { escapeHtml } from '../lib/onyx/markdown';
+
+    const docListEl = document.getElementById('knowledgeDocList')!;
+    const totalDocCount = document.getElementById('totalDocCount')!;
+    const connectorListEl = document.getElementById('connectorList')!;
+    const uploadInput = document.getElementById('knowledgeUploadInput') as HTMLInputElement;
+    const uploadBtn = document.getElementById('btnUploadKnowledge')!;
+    const progressBanner = document.getElementById('ingestProgressBanner')!;
+    const progressText = document.getElementById('ingestProgressText')!;
+
+    // 1. Fetch & Render Real Ingested Documents
+    async function loadDocs() {
+      try {
+        const docs = await listDocuments();
+        totalDocCount.innerText = String(docs.length);
+        docListEl.innerHTML = '';
+
+        if (docs.length === 0) {
+          docListEl.innerHTML = '<div style="color:var(--text-muted);font-size:13px;padding:12px 0;">No documents in catalog yet. Click Upload Documents to ingest PDF, Markdown, or text files.</div>';
+          return;
+        }
+
+        docs.forEach(doc => {
+          const card = document.createElement('div');
+          card.className = 'doc-card';
+          card.innerHTML = `
+            <div class="doc-card-left">
+              <span class="doc-ext-badge">${escapeHtml(doc.fileFormat.toUpperCase())}</span>
+              <div class="doc-card-info">
+                <span class="doc-card-title" title="${escapeHtml(doc.filename)}">${escapeHtml(doc.filename)}</span>
+                <span class="doc-card-meta">${doc.totalChunks || 0} chunks &bull; Indexed</span>
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px;">
+              <span class="status-badge success">Active</span>
+              <button class="btn-secondary" style="padding:4px 8px;font-size:12px;color:var(--status-danger);" onclick="window.handleDeleteDoc('${doc.id}', '${escapeHtml(doc.filename)}')">Delete</button>
+            </div>
+          `;
+          docListEl.appendChild(card);
+        });
+      } catch (err: any) {
+        docListEl.innerHTML = `<div style="color:var(--status-danger);font-size:13px;">Failed to load documents: ${escapeHtml(err.message)}</div>`;
+      }
+    }
+
+    // 2. Document Deletion Handler
+    (window as any).handleDeleteDoc = async function(docId: string, filename: string) {
+      if (!confirm(`Are you sure you want to permanently remove "${filename}" and its vector index?`)) return;
+      try {
+        await removeDocument(docId);
+        await loadDocs();
+      } catch (err: any) {
+        alert('Failed to remove document: ' + err.message);
+      }
+    };
+
+    // 3. Document Upload Routine
+    uploadBtn.addEventListener('click', () => uploadInput.click());
+    uploadInput.addEventListener('change', async (e) => {
+      const target = e.target as HTMLInputElement;
+      if (!target.files || target.files.length === 0) return;
+
+      const files = Array.from(target.files);
+      progressBanner.style.display = 'flex';
+      progressText.innerText = `Ingesting & indexing ${files.length} document(s)...`;
+
+      try {
+        await uploadDocuments(files);
+        progressText.innerText = 'Indexing complete! Documents updated.';
+        await loadDocs();
+        setTimeout(() => {
+          progressBanner.style.display = 'none';
+        }, 3000);
+      } catch (err: any) {
+        progressText.innerText = 'Upload failed: ' + err.message;
+        setTimeout(() => {
+          progressBanner.style.display = 'none';
+        }, 4000);
+      } finally {
+        uploadInput.value = '';
+      }
+    });
+
+    // 4. Render Connectors (Onyx Architecture)
+    async function loadConnectorsList() {
+      const connectors = await listConnectors();
+      connectorListEl.innerHTML = '';
+      connectors.forEach(c => {
+        const item = document.createElement('div');
+        item.className = 'onyx-card';
+        item.style.padding = '14px';
+        item.innerHTML = `
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+            <span style="font-weight:600;font-size:var(--text-sm);">${escapeHtml(c.name)}</span>
+            <span class="status-badge ${c.status === 'active' ? 'success' : 'warning'}">${c.status}</span>
+          </div>
+          <div style="font-size:var(--text-xs);color:var(--text-muted);display:flex;flex-direction:column;gap:3px;">
+            <span>Type: <strong>${c.type}</strong></span>
+            <span>Documents: <strong>${c.documentCount}</strong></span>
+          </div>
+        `;
+        connectorListEl.appendChild(item);
+      });
+    }
+
+    // Startup
+    loadDocs();
+    loadConnectorsList();
+  </script>
+</AppLayout>

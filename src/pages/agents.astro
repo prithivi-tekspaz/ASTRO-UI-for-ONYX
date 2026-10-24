@@ -1,0 +1,115 @@
+---
+// src/pages/agents.astro
+// Onyx Knowledge Workspace — Agents & Tool Activity
+import AppLayout from '../layouts/AppLayout.astro';
+---
+
+<AppLayout title="Agents — Onyx Knowledge Workspace" activeRoute="agents" pageTitle="Agents">
+  <div class="page-workspace">
+    <div class="page-header">
+      <div class="page-title-group">
+        <h1 class="page-title">Assistants & Specialized Agents</h1>
+        <p class="page-subtitle">Configure domain assistants, persona settings, and autonomous tool workflows</p>
+      </div>
+    </div>
+
+    <div class="page-body-scroll">
+      <div class="page-content-container">
+        <!-- Development Mode Notice -->
+        <div class="dev-mock-banner">
+          <span>⚙️</span>
+          <span><strong>Onyx Integration Adapter:</strong> Displaying specialized assistants configuration schema. Connects to backend agent endpoints once confirmed.</span>
+        </div>
+
+        <!-- Available Agents List -->
+        <div class="onyx-card">
+          <div class="onyx-card-header">
+            <div>
+              <span class="onyx-card-title">Available Assistants</span>
+              <p style="font-size:var(--text-xs); color:var(--text-muted); margin-top:2px;">Select an agent to route specific domain queries and analysis tasks</p>
+            </div>
+          </div>
+
+          <div id="agentsGrid" class="grid-3">
+            <!-- Dynamically populated agents -->
+          </div>
+        </div>
+
+        <!-- Tool Activity Timeline (Real Event Mapping Contract) -->
+        <div class="onyx-card">
+          <div class="onyx-card-header">
+            <div>
+              <span class="onyx-card-title">Recent Tool & Retrieval Activity</span>
+              <p style="font-size:var(--text-xs); color:var(--text-muted); margin-top:2px;">Real-time event stream from agent execution pipeline</p>
+            </div>
+            <span class="status-badge success">Live</span>
+          </div>
+
+          <div style="display:flex; flex-direction:column; gap:8px;">
+            <div style="display:flex; align-items:center; justify-content:space-between; padding:10px 12px; border-radius:var(--radius-sm); background-color:var(--bg-app); border:1px solid var(--border-subtle); font-size:var(--text-xs);">
+              <div style="display:flex; align-items:center; gap:8px;">
+                <span style="color:var(--brand-cyan);">⚡</span>
+                <span><strong>Vector Retrieval:</strong> Embedded query and retrieved 8 semantic chunks from local knowledge base</span>
+              </div>
+              <span style="color:var(--text-muted);">Completed</span>
+            </div>
+
+            <div style="display:flex; align-items:center; justify-content:space-between; padding:10px 12px; border-radius:var(--radius-sm); background-color:var(--bg-app); border:1px solid var(--border-subtle); font-size:var(--text-xs);">
+              <div style="display:flex; align-items:center; gap:8px;">
+                <span style="color:var(--brand-primary);">📑</span>
+                <span><strong>Citation Synthesis:</strong> Formatted references with source locations (Page 4, Slide 2)</span>
+              </div>
+              <span style="color:var(--text-muted);">Completed</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    import { listAgents } from '../lib/onyx/search';
+    import { escapeHtml } from '../lib/onyx/markdown';
+
+    const agentsGrid = document.getElementById('agentsGrid')!;
+
+    async function loadAgents() {
+      const agents = await listAgents();
+      agentsGrid.innerHTML = '';
+
+      agents.forEach(agent => {
+        const card = document.createElement('div');
+        card.className = 'onyx-card';
+        card.style.display = 'flex';
+        card.style.flexDirection = 'column';
+        card.style.justifyContent = 'space-between';
+        card.style.gap = '12px';
+
+        card.innerHTML = `
+          <div>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+              <span style="font-weight:600;font-size:var(--text-sm);color:var(--text-main);">${escapeHtml(agent.name)}</span>
+              ${agent.isDefault ? '<span class="status-badge info">Default</span>' : ''}
+            </div>
+            <p style="font-size:var(--text-xs);color:var(--text-secondary);line-height:1.5;margin-bottom:12px;">
+              ${escapeHtml(agent.description)}
+            </p>
+            <div style="display:flex;flex-wrap:wrap;gap:4px;">
+              ${agent.capabilities.map(c => `
+                <span style="font-size:10px;padding:2px 6px;border-radius:4px;background-color:var(--bg-app);border:1px solid var(--border-subtle);color:var(--brand-cyan);">
+                  ${escapeHtml(c)}
+                </span>
+              `).join('')}
+            </div>
+          </div>
+          <div style="margin-top:auto;padding-top:12px;border-top:1px solid var(--border-subtle);">
+            <a href="/" class="btn-secondary" style="width:100%;text-align:center;font-size:var(--text-xs);">Start Chat</a>
+          </div>
+        `;
+        agentsGrid.appendChild(card);
+      });
+    }
+
+    loadAgents();
+  </script>
+</AppLayout>

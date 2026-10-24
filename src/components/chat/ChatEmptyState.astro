@@ -1,0 +1,47 @@
+---
+// src/components/chat/ChatEmptyState.astro
+const examplePrompts = [
+  {
+    title: 'Summarize Document Architecture',
+    desc: 'Synthesize core technical mechanisms and design tradeoffs',
+    prompt: 'Summarize the core technical architecture and design principles from the uploaded documents.'
+  },
+  {
+    title: 'Verify Factual Reasoning',
+    desc: 'Analyze multi-step mathematical and algorithmic proofs',
+    prompt: 'Explain the mathematical reasoning and self-verification mechanism described in DeepSeek-R1.'
+  },
+  {
+    title: 'Cross-Source Comparison',
+    desc: 'Compare implementation tradeoffs across stored sources',
+    prompt: 'Compare the retrieval strategies and citation tracking methods across the knowledge library.'
+  },
+  {
+    title: 'Extract Structured Specifications',
+    desc: 'Format API endpoints, schemas, or benchmarks into a table',
+    prompt: 'Extract all performance metrics and benchmark scores from the documents into a clean table.'
+  }
+];
+---
+
+<div class="chat-empty-state" id="chatEmptyState">
+  <div class="empty-state-badge">O</div>
+  <h1 class="empty-state-title">How can Onyx help you today?</h1>
+  <p class="empty-state-desc">
+    Query company knowledge, analyze technical documents, synthesize citations, and verify facts with traceable citations.
+  </p>
+
+  <div class="empty-prompt-grid">
+    {examplePrompts.map(p => (
+      <button 
+        type="button" 
+        class="empty-prompt-card" 
+        data-prompt={p.prompt}
+        onclick="window.populateComposerPrompt(this.getAttribute('data-prompt'))"
+      >
+        <span class="empty-prompt-title">{p.title}</span>
+        <span class="empty-prompt-desc">{p.desc}</span>
+      </button>
+    ))}
+  </div>
+</div>

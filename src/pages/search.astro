@@ -1,0 +1,108 @@
+---
+// src/pages/search.astro
+// Onyx Knowledge Workspace — Dedicated Search Experience
+import AppLayout from '../layouts/AppLayout.astro';
+---
+
+<AppLayout title="Search — Onyx Knowledge Workspace" activeRoute="search" pageTitle="Search">
+  <div class="page-workspace">
+    <div class="page-header">
+      <div class="page-title-group">
+        <h1 class="page-title">Enterprise Knowledge Search</h1>
+        <p class="page-subtitle">Cross-document semantic retrieval across indexing vaults and attached sources</p>
+      </div>
+    </div>
+
+    <div class="page-body-scroll">
+      <div class="page-content-container">
+        <!-- Search Input Bar -->
+        <form id="searchForm" class="search-input-box">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-muted); flex-shrink:0;">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+          <input 
+            type="search" 
+            id="searchQuery" 
+            placeholder="Search across all ingested documents, code, and guides..." 
+            autocomplete="off"
+            required
+          />
+          <button type="submit" class="btn-primary" id="searchSubmitBtn">Search</button>
+        </form>
+
+        <!-- Development Mode Contract Banner -->
+        <div class="dev-mock-banner">
+          <span>⚙️</span>
+          <span><strong>Onyx Integration Adapter:</strong> Connected to development search schema. Verification pending from backend team.</span>
+        </div>
+
+        <!-- Dynamic Results Container -->
+        <div id="searchResultsSection" style="display: flex; flex-direction: column; gap: var(--space-4);">
+          <div id="resultsCount" style="font-size: var(--text-xs); color: var(--text-muted); text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px;"></div>
+          <div id="resultsList" style="display: flex; flex-direction: column; gap: var(--space-3);"></div>
+        </div>
+
+        <!-- Initial Search Empty State -->
+        <div id="searchInitialState" style="text-align: center; padding: 48px 16px; color: var(--text-muted);">
+          <div style="font-size: 32px; margin-bottom: 8px;">🔍</div>
+          <h2 style="font-size: 16px; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px;">Enter a query to search</h2>
+          <p style="font-size: 13px;">Search semantic chunks, exact code signatures, or technical specifications.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    import { searchKnowledge } from '../lib/onyx/search';
+    import { escapeHtml } from '../lib/onyx/markdown';
+
+    const form = document.getElementById('searchForm') as HTMLFormElement;
+    const input = document.getElementById('searchQuery') as HTMLInputElement;
+    const resultsSection = document.getElementById('searchResultsSection')!;
+    const resultsCount = document.getElementById('resultsCount')!;
+    const resultsList = document.getElementById('resultsList')!;
+    const initialState = document.getElementById('searchInitialState')!;
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const query = input.value.trim();
+      if (!query) return;
+
+      initialState.style.display = 'none';
+      resultsList.innerHTML = '<div style="color:var(--text-muted);font-size:13px;">Searching knowledge base...</div>';
+
+      try {
+        const results = await searchKnowledge(query);
+        resultsCount.innerText = `${results.length} result(s) found`;
+        resultsList.innerHTML = '';
+
+        if (results.length === 0) {
+          resultsList.innerHTML = '<div style="color:var(--text-muted);font-size:13px;">No matching documents found.</div>';
+          return;
+        }
+
+        results.forEach(res => {
+          const card = document.createElement('div');
+          card.className = 'onyx-card';
+          card.innerHTML = `
+            <div class="onyx-card-header" style="margin-bottom:8px;">
+              <span class="onyx-card-title">${escapeHtml(res.title)}</span>
+              <span class="status-badge info">${res.sourceLocation || 'Document'}</span>
+            </div>
+            <p style="font-size:var(--text-sm);color:var(--text-secondary);line-height:1.6;margin-bottom:12px;">
+              ${escapeHtml(res.snippet)}
+            </p>
+            <div style="display:flex;align-items:center;justify-content:space-between;font-size:var(--text-xs);color:var(--text-muted);">
+              <span>Match Confidence: <strong>${Math.round(res.score * 100)}%</strong></span>
+              <a href="/" class="btn-secondary" style="padding:4px 10px;font-size:11px;" onclick="localStorage.setItem('onyx_prefill_query', 'Explain ${escapeHtml(res.title)}')">Open in Chat</a>
+            </div>
+          `;
+          resultsList.appendChild(card);
+        });
+      } catch (err: any) {
+        resultsList.innerHTML = `<div style="color:var(--status-danger);font-size:13px;">Search failed: ${escapeHtml(err.message)}</div>`;
+      }
+    });
+  </script>
+</AppLayout>

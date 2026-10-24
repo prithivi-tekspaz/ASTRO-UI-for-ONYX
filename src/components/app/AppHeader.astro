@@ -1,0 +1,63 @@
+---
+// src/components/app/AppHeader.astro
+interface Props {
+  currentRoute?: string;
+  pageTitle?: string;
+  pageSubtitle?: string;
+}
+
+const { currentRoute = 'chat', pageTitle, pageSubtitle } = Astro.props;
+---
+
+<header class="app-header">
+  <div class="header-left">
+    <!-- Sidebar Toggle -->
+    <button class="icon-btn" id="sidebarToggleBtn" aria-label="Toggle navigation sidebar" title="Toggle sidebar">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+        <line x1="9" y1="3" x2="9" y2="21"></line>
+      </svg>
+    </button>
+
+    <!-- Brand Identity -->
+    <a href="/" class="header-brand" aria-label="Onyx Knowledge Workspace Home">
+      <span class="header-brand-badge">O</span>
+      <span>Onyx</span>
+    </a>
+
+    <!-- Route Context -->
+    {currentRoute === 'chat' ? (
+      <div class="header-context">
+        <span class="header-context-title" id="activeConvHeaderTitle">New Knowledge Session</span>
+      </div>
+    ) : (
+      <div class="header-context">
+        <span class="header-context-title">{pageTitle || currentRoute}</span>
+      </div>
+    )}
+  </div>
+
+  <div class="header-right">
+    <!-- Chat-specific Header Actions -->
+    {currentRoute === 'chat' && (
+      <>
+        <button class="icon-btn" id="headerDeleteChatBtn" aria-label="Delete current chat" title="Delete current conversation">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="3 6 5 6 21 6"></polyline>
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+          </svg>
+        </button>
+        <button class="icon-btn" id="headerNewChatBtn" aria-label="Start new chat" title="New conversation">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 5v14M5 12h14"></path>
+          </svg>
+        </button>
+      </>
+    )}
+
+    <!-- Theme Switcher -->
+    <button class="icon-btn" id="themeToggleBtn" aria-label="Toggle color theme" title="Toggle theme">
+      <span id="themeIcon">🌓</span>
+    </button>
+  </div>
+</header>

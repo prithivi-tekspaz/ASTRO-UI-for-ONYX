@@ -1,0 +1,233 @@
+---
+// src/components/effects/AmbientBackground.astro
+// Premium 3D Wireframe Canvas & Subtle Multi-layer Ambient Glow
+---
+
+<div class="ambient-background" aria-hidden="true">
+  <div class="ambient-glow glow-1"></div>
+  <div class="ambient-glow glow-2"></div>
+  <canvas id="ambientCanvas" class="ambient-canvas"></canvas>
+</div>
+
+<script is:inline>
+(function initAmbient3D() {
+  const canvas = document.getElementById('ambientCanvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+
+  let dpr = Math.min(window.devicePixelRatio || 1, 2);
+  let width = 0;
+  let height = 0;
+  let animId = null;
+
+  // Responsive particle density based on screen size
+  const isMobile = window.innerWidth <= 768;
+  const nodeCount = isMobile ? 45 : 85;
+  const nodes = [];
+
+  function resize() {
+    if (!canvas.parentElement) return;
+    width = canvas.parentElement.offsetWidth;
+    height = canvas.parentElement.offsetHeight;
+    canvas.width = width * dpr;
+    canvas.height = height * dpr;
+    ctx.resetTransform?.() || ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.scale(dpr, dpr);
+  }
+
+  // Populate network nodes
+  for (let i = 0; i < nodeCount; i++) {
+    nodes.push({
+      x: Math.random() * (window.innerWidth || 1200),
+      y: Math.random() * (window.innerHeight || 800),
+      z: Math.random() * 0.7 + 0.3,
+      vx: (Math.random() - 0.5) * 0.4,
+      vy: (Math.random() - 0.5) * 0.4,
+      radius: Math.random() * 2.2 + 1.2
+    });
+  }
+
+  // 3D Geometric shapes
+  const cubeVertices = [
+    [-1, -1, -1], [1, -1, -1], [1, 1, -1], [-1, 1, -1],
+    [-1, -1, 1], [1, -1, 1], [1, 1, 1], [-1, 1, 1]
+  ];
+  const cubeEdges = [
+    [0, 1], [1, 2], [2, 3], [3, 0],
+    [4, 5], [5, 6], [6, 7], [7, 4],
+    [0, 4], [1, 5], [2, 6], [3, 7]
+  ];
+
+  const octaVertices = [
+    [0, -1.3, 0], [0, 1.3, 0],
+    [-1, 0, -1], [1, 0, -1], [1, 0, 1], [-1, 0, 1]
+  ];
+  const octaEdges = [
+    [0, 2], [0, 3], [0, 4], [0, 5],
+    [1, 2], [1, 3], [1, 4], [1, 5],
+    [2, 3], [3, 4], [4, 5], [5, 2]
+  ];
+
+  // Placed predominantly in non-competing outer peripheral regions
+  const shapePositions = isMobile ? [
+    { x: 0.12, y: 0.15 },
+    { x: 0.88, y: 0.18 },
+    { x: 0.15, y: 0.85 }
+  ] : [
+    { x: 0.12, y: 0.18 },
+    { x: 0.90, y: 0.18 },
+    { x: 0.14, y: 0.82 },
+    { x: 0.88, y: 0.82 },
+    { x: 0.50, y: 0.12 },
+    { x: 0.52, y: 0.88 }
+  ];
+
+  const shapes = shapePositions.map((pos, idx) => ({
+    relX: pos.x,
+    relY: pos.y,
+    type: idx % 2 === 0 ? 'cube' : 'octa',
+    size: 32 + (idx % 3) * 12,
+    rx: Math.random() * Math.PI,
+    ry: Math.random() * Math.PI,
+    rz: Math.random() * Math.PI,
+    vx: 0.003 + (idx % 3) * 0.002,
+    vy: 0.004 + (idx % 2) * 0.002,
+    vz: 0.002
+  }));
+
+  function project(p, cx, cy, fov = 260) {
+    const scale = fov / (fov + p[2]);
+    return {
+      x: cx + p[0] * scale,
+      y: cy + p[1] * scale,
+      scale
+    };
+  }
+
+  function rotateX(p, a) {
+    const cos = Math.cos(a), sin = Math.sin(a);
+    return [p[0], p[1] * cos - p[2] * sin, p[1] * sin + p[2] * cos];
+  }
+  function rotateY(p, a) {
+    const cos = Math.cos(a), sin = Math.sin(a);
+    return [p[0] * cos + p[2] * sin, p[1], -p[0] * sin + p[2] * cos];
+  }
+  function rotateZ(p, a) {
+    const cos = Math.cos(a), sin = Math.sin(a);
+    return [p[0] * cos - p[1] * sin, p[0] * sin + p[1] * cos, p[2]];
+  }
+
+  window.addEventListener('resize', resize, { passive: true });
+  resize();
+
+  // Respect reduced motion
+  const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  function render() {
+    if (!width || !height) {
+      animId = requestAnimationFrame(render);
+      return;
+    }
+
+    ctx.clearRect(0, 0, width, height);
+    const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
+
+    // 1. Render rotating 3D wireframe solids
+    for (let i = 0; i < shapes.length; i++) {
+      const s = shapes[i];
+      if (!prefersReduced) {
+        s.rx += s.vx;
+        s.ry += s.vy;
+        s.rz += s.vz;
+      }
+
+      const cx = width * s.relX;
+      const cy = height * s.relY;
+      const verts = s.type === 'cube' ? cubeVertices : octaVertices;
+      const edges = s.type === 'cube' ? cubeEdges : octaEdges;
+
+      const projected = verts.map(v => {
+        let p = [v[0] * s.size, v[1] * s.size, v[2] * s.size];
+        p = rotateX(p, s.rx);
+        p = rotateY(p, s.ry);
+        p = rotateZ(p, s.rz);
+        return project(p, cx, cy);
+      });
+
+      ctx.strokeStyle = isDark
+        ? 'rgba(129, 140, 248, 0.28)'
+        : 'rgba(79, 70, 229, 0.18)';
+      ctx.lineWidth = 1;
+
+      for (let j = 0; j < edges.length; j++) {
+        const [a, b] = edges[j];
+        ctx.beginPath();
+        ctx.moveTo(projected[a].x, projected[a].y);
+        ctx.lineTo(projected[b].x, projected[b].y);
+        ctx.stroke();
+      }
+    }
+
+    // 2. Network filaments between close nodes
+    for (let i = 0; i < nodes.length; i++) {
+      const p1 = nodes[i];
+      if (!prefersReduced) {
+        p1.x += p1.vx;
+        p1.y += p1.vy;
+        if (p1.x < 0 || p1.x > width) p1.vx *= -1;
+        if (p1.y < 0 || p1.y > height) p1.vy *= -1;
+      }
+
+      for (let j = i + 1; j < nodes.length; j++) {
+        const p2 = nodes[j];
+        const dx = p1.x - p2.x;
+        const dy = p1.y - p2.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+
+        if (dist < 125) {
+          const alpha = (1 - dist / 125) * (p1.z + p2.z) * 0.5 * (isDark ? 0.32 : 0.24);
+          if (alpha > 0.02) {
+            ctx.strokeStyle = isDark
+              ? `rgba(165, 180, 252, ${alpha.toFixed(3)})`
+              : `rgba(99, 102, 241, ${(alpha * 0.9).toFixed(3)})`;
+            ctx.lineWidth = 0.9;
+            ctx.beginPath();
+            ctx.moveTo(p1.x, p1.y);
+            ctx.lineTo(p2.x, p2.y);
+            ctx.stroke();
+          }
+        }
+      }
+    }
+
+    // 3. Render luminous particle nodes
+    for (let i = 0; i < nodes.length; i++) {
+      const n = nodes[i];
+      const nodeAlpha = Math.min(0.8, n.z * (isDark ? 0.65 : 0.45));
+      ctx.fillStyle = isDark
+        ? `rgba(191, 219, 254, ${nodeAlpha.toFixed(3)})`
+        : `rgba(67, 56, 202, ${nodeAlpha.toFixed(3)})`;
+
+      ctx.beginPath();
+      ctx.arc(n.x, n.y, n.radius * n.z, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    if (!prefersReduced) {
+      animId = requestAnimationFrame(render);
+    }
+  }
+
+  // Teardown when tab is hidden to conserve GPU cycles
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      if (animId) cancelAnimationFrame(animId);
+    } else {
+      if (!prefersReduced) animId = requestAnimationFrame(render);
+    }
+  });
+
+  animId = requestAnimationFrame(render);
+})();
+</script>

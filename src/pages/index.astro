@@ -1,1748 +1,328 @@
 ---
-// Rig Knowledge Agent | Simplified ChatGPT-Style RAG Interface
-// Clean, Usable, Modern Conversational AI Workspace with Subtle Ambient Motion
+// src/pages/index.astro
+// Onyx Knowledge Workspace — Chat View (Refactored & Elevated)
+import AppLayout from '../layouts/AppLayout.astro';
+import ChatEmptyState from '../components/chat/ChatEmptyState.astro';
+import ChatComposer from '../components/chat/ChatComposer.astro';
 ---
 
-<!DOCTYPE html>
-<html lang="en" data-theme="dark">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Rig Knowledge Agent</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-  
-  <script is:inline>
-    // Immediate anti-flash theme initialization
-    (function() {
-      const savedTheme = localStorage.getItem('rag_theme');
-      if (savedTheme === 'light' || savedTheme === 'dark') {
-        document.documentElement.setAttribute('data-theme', savedTheme);
-      } else {
-        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-        document.documentElement.setAttribute('data-theme', prefersDark ? 'dark' : 'light');
-      }
-    })();
-  </script>
-
-  <style>
-    /* Design Tokens: Refined ChatGPT-Style Aesthetics */
-    :root[data-theme="dark"] {
-      --bg-app: #1A1A1E;
-      --bg-sidebar: #131316;
-      --bg-surface: #27272D;
-      --bg-surface-hover: #313138;
-      --bg-user-msg: #2C2C33;
-      --border-subtle: rgba(255, 255, 255, 0.08);
-      --border-strong: rgba(255, 255, 255, 0.16);
-      --text-main: #F3F3F6;
-      --text-secondary: #B4B4BE;
-      --text-muted: #7A7A88;
-      --accent-btn-bg: #F3F3F6;
-      --accent-btn-color: #111114;
-      --status-success: #10B981;
-      --status-danger: #EF4444;
-      --citation-bg: #151518;
-      --composer-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
-      --ambient-glow-1: rgba(56, 189, 248, 0.16);
-      --ambient-glow-2: rgba(129, 140, 248, 0.16);
-      --particle-color: rgba(147, 197, 253, 0.35);
-      --filament-color: rgba(147, 197, 253, 0.14);
-    }
-
-    :root[data-theme="light"] {
-      --bg-app: #FFFFFF;
-      --bg-sidebar: #F7F7F9;
-      --bg-surface: #F0F0F3;
-      --bg-surface-hover: #E7E7EC;
-      --bg-user-msg: #EEEEF2;
-      --border-subtle: rgba(0, 0, 0, 0.07);
-      --border-strong: rgba(0, 0, 0, 0.15);
-      --text-main: #111114;
-      --text-secondary: #585864;
-      --text-muted: #8A8A98;
-      --accent-btn-bg: #111114;
-      --accent-btn-color: #FFFFFF;
-      --status-success: #059669;
-      --status-danger: #DC2626;
-      --citation-bg: #F8F8FA;
-      --composer-shadow: 0 10px 30px rgba(0, 0, 0, 0.07);
-      --ambient-glow-1: rgba(2, 132, 199, 0.14);
-      --ambient-glow-2: rgba(99, 102, 241, 0.14);
-      --particle-color: rgba(30, 58, 138, 0.32);
-      --filament-color: rgba(30, 58, 138, 0.15);
-    }
-
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
-
-    html, body {
-      height: 100%;
-      min-height: 0;
-      margin: 0;
-      padding: 0;
-      overflow: hidden; /* Critical: whole page never scrolls */
-      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background-color: var(--bg-app);
-      color: var(--text-main);
-      font-size: 14.5px;
-      line-height: 1.6;
-      -webkit-font-smoothing: antialiased;
-    }
-
-    /* Subdued Scrollbars */
-    ::-webkit-scrollbar {
-      width: 6px;
-      height: 6px;
-    }
-    ::-webkit-scrollbar-track {
-      background: transparent;
-    }
-    ::-webkit-scrollbar-thumb {
-      background: var(--border-subtle);
-      border-radius: 4px;
-    }
-    ::-webkit-scrollbar-thumb:hover {
-      background: var(--border-strong);
-    }
-
-    /* App Shell: Viewport Fixed */
-    .app-shell {
-      height: 100vh;
-      height: 100dvh;
-      min-height: 0;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-      position: relative;
-    }
-
-    /* Subtle Premium Ambient Background Layer (Behind all content) */
-    .ambient-background {
-      position: absolute;
-      inset: 0;
-      width: 100%;
-      height: 100%;
-      pointer-events: none; /* Zero interaction blocking */
-      z-index: 0;
-      overflow: hidden;
-    }
-
-    .ambient-glow {
-      position: absolute;
-      border-radius: 50%;
-      filter: blur(100px);
-      pointer-events: none;
-      opacity: 0.8;
-      transform: translate3d(0, 0, 0);
-    }
-
-    .glow-1 {
-      width: 600px;
-      height: 600px;
-      top: -150px;
-      left: 15%;
-      background: var(--ambient-glow-1);
-      animation: driftGlow1 28s infinite alternate ease-in-out;
-    }
-
-    .glow-2 {
-      width: 550px;
-      height: 550px;
-      bottom: -150px;
-      right: 10%;
-      background: var(--ambient-glow-2);
-      animation: driftGlow2 32s infinite alternate ease-in-out;
-    }
-
-    @keyframes driftGlow1 {
-      0% { transform: translate3d(0, 0, 0) scale(1); }
-      50% { transform: translate3d(40px, 50px, 0) scale(1.08); }
-      100% { transform: translate3d(-30px, 20px, 0) scale(0.96); }
-    }
-
-    @keyframes driftGlow2 {
-      0% { transform: translate3d(0, 0, 0) scale(1); }
-      50% { transform: translate3d(-50px, -40px, 0) scale(1.06); }
-      100% { transform: translate3d(30px, -20px, 0) scale(0.95); }
-    }
-
-    .ambient-canvas {
-      position: absolute;
-      inset: 0;
-      width: 100%;
-      height: 100%;
-      pointer-events: none;
-    }
-
-    /* Compact Top Header */
-    .app-header {
-      height: 48px;
-      padding: 0 16px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      flex-shrink: 0;
-      border-bottom: 1px solid var(--border-subtle);
-      background-color: var(--bg-app);
-      position: relative;
-      z-index: 50;
-    }
-
-    .header-left {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-
-    .header-brand {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 14px;
-      font-weight: 600;
-      color: var(--text-main);
-      letter-spacing: -0.2px;
-    }
-
-    .header-right {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .icon-btn {
-      width: 34px;
-      height: 34px;
-      padding: 0;
-      border-radius: 8px;
-      border: 1px solid transparent;
-      background: transparent;
-      color: var(--text-secondary);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      transition: background-color 0.15s, color 0.15s;
-    }
-
-    .icon-btn:hover {
-      background-color: var(--bg-surface);
-      color: var(--text-main);
-    }
-
-    /* App Main Body */
-    .app-main {
-      flex: 1;
-      min-height: 0;
-      min-width: 0;
-      display: flex;
-      overflow: hidden;
-      position: relative;
-      z-index: 10;
-    }
-
-    /* Left Sidebar: Collapsible with 50/50 division */
-    .sidebar {
-      width: 270px;
-      flex: 0 0 270px;
-      min-height: 0;
-      background-color: var(--bg-sidebar);
-      border-right: 1px solid var(--border-subtle);
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-      transition: width 0.22s cubic-bezier(0.2, 0, 0, 1), transform 0.22s cubic-bezier(0.2, 0, 0, 1), flex 0.22s cubic-bezier(0.2, 0, 0, 1);
-      z-index: 40;
-    }
-
-    .sidebar.collapsed {
-      width: 0;
-      flex: 0 0 0;
-      border-right: none;
-      transform: translateX(-100%);
-      pointer-events: none;
-      visibility: hidden;
-    }
-
-    /* 50/50 Sections in Sidebar */
-    .sidebar-section {
-      flex: 1 1 50%;
-      min-height: 0;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-      padding: 12px 10px 8px 10px;
-    }
-
-    .sidebar-section-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 8px;
-      padding: 0 6px;
-      flex-shrink: 0;
-    }
-
-    .section-title {
-      font-size: 11px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.6px;
-      color: var(--text-muted);
-    }
-
-    .btn-sidebar-action {
-      display: flex;
-      align-items: center;
-      gap: 5px;
-      padding: 4px 8px;
-      border-radius: 6px;
-      border: 1px solid var(--border-subtle);
-      background-color: var(--bg-surface);
-      color: var(--text-main);
-      font-size: 11.5px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.15s ease;
-    }
-
-    .btn-sidebar-action:hover {
-      background-color: var(--bg-surface-hover);
-      border-color: var(--border-strong);
-    }
-
-    /* Independent Scrolling Content in Sidebar */
-    .sidebar-section-content {
-      flex: 1;
-      min-height: 0;
-      overflow-y: auto;
-      overflow-x: hidden;
-      display: flex;
-      flex-direction: column;
-      gap: 3px;
-    }
-
-    .sidebar-divider {
-      height: 1px;
-      background-color: var(--border-subtle);
-      margin: 0 10px;
-      flex-shrink: 0;
-    }
-
-    /* Session History Item */
-    .session-item {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 7px 10px;
-      border-radius: 7px;
-      cursor: pointer;
-      font-size: 13px;
-      color: var(--text-secondary);
-      transition: background-color 0.15s, color 0.15s;
-      gap: 6px;
-      position: relative;
-    }
-
-    .session-item:hover {
-      background-color: var(--bg-surface);
-      color: var(--text-main);
-    }
-
-    .session-item.active {
-      background-color: var(--bg-surface-hover);
-      color: var(--text-main);
-      font-weight: 600;
-    }
-
-    .session-left {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      overflow: hidden;
-      flex: 1;
-      min-width: 0;
-    }
-
-    .session-icon {
-      flex-shrink: 0;
-      opacity: 0.6;
-      display: flex;
-      align-items: center;
-    }
-
-    .session-title {
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      flex: 1;
-    }
-
-    .btn-delete-session {
-      background: none;
-      border: none;
-      color: var(--text-muted);
-      cursor: pointer;
-      padding: 3px 5px;
-      border-radius: 4px;
-      font-size: 12px;
-      line-height: 1;
-      opacity: 0;
-      transition: all 0.15s ease;
-      flex-shrink: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .session-item:hover .btn-delete-session,
-    .session-item.active .btn-delete-session,
-    .btn-delete-session:focus-visible {
-      opacity: 0.7;
-    }
-
-    .btn-delete-session:hover {
-      opacity: 1 !important;
-      color: var(--status-danger);
-      background-color: rgba(239, 68, 68, 0.14);
-    }
-
-    /* Document Item */
-    .doc-item {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 7px 9px;
-      border-radius: 7px;
-      border: 1px solid transparent;
-      background-color: transparent;
-      cursor: default;
-      transition: background-color 0.15s;
-      gap: 6px;
-    }
-
-    .doc-item:hover {
-      background-color: var(--bg-surface);
-    }
-
-    .doc-left {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      overflow: hidden;
-      flex: 1;
-    }
-
-    .doc-badge {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 9px;
-      font-weight: 700;
-      padding: 2px 4px;
-      border-radius: 4px;
-      background-color: var(--bg-surface);
-      border: 1px solid var(--border-subtle);
-      color: var(--text-muted);
-      flex-shrink: 0;
-      text-transform: uppercase;
-    }
-
-    .doc-info {
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-    }
-
-    .doc-filename {
-      font-size: 12.5px;
-      font-weight: 500;
-      color: var(--text-main);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .doc-meta {
-      font-size: 10.5px;
-      color: var(--text-muted);
-    }
-
-    .btn-delete-doc {
-      background: none;
-      border: none;
-      color: var(--text-muted);
-      cursor: pointer;
-      padding: 4px 6px;
-      border-radius: 4px;
-      font-size: 12px;
-      line-height: 1;
-      opacity: 0.6;
-      transition: all 0.15s ease;
-      flex-shrink: 0;
-    }
-
-    .btn-delete-doc:hover {
-      opacity: 1;
-      color: var(--status-danger);
-      background-color: rgba(239, 68, 68, 0.12);
-    }
-
-    /* Upload Live Status Bar */
-    .upload-status-indicator {
-      font-size: 11.5px;
-      padding: 6px 10px;
-      border-radius: 6px;
-      background-color: var(--bg-surface);
-      border: 1px solid var(--border-subtle);
-      color: var(--text-secondary);
-      margin-bottom: 6px;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      animation: fadeIn 0.2s ease;
-    }
-
-    /* Main Chat Panel */
-    .chat-panel {
-      flex: 1;
-      min-width: 0;
-      min-height: 0;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-      background-color: transparent;
-      position: relative;
-      z-index: 10;
-    }
-
-    /* Chat History (Only scrolling region in main workspace) */
-    .chat-history {
-      flex: 1;
-      min-height: 0;
-      overflow-y: auto;
-      overflow-x: hidden;
-      overscroll-behavior: contain;
-      scroll-behavior: smooth;
-    }
-
-    .chat-content-container {
-      max-width: 800px;
-      width: 100%;
-      margin: 0 auto;
-      padding: 24px 20px 40px 20px;
-      display: flex;
-      flex-direction: column;
-      gap: 22px;
-      min-height: 100%;
-    }
-
-    /* Minimalist Unobtrusive Welcome State */
-    .welcome-container {
-      margin: auto 0;
-      text-align: center;
-      padding: 40px 20px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 12px;
-    }
-
-    .welcome-badge {
-      width: 44px;
-      height: 44px;
-      border-radius: 12px;
-      background-color: var(--bg-surface);
-      border: 1px solid var(--border-subtle);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 19px;
-      font-weight: 700;
-      color: var(--text-main);
-    }
-
-    .welcome-title {
-      font-size: 19px;
-      font-weight: 600;
-      color: var(--text-main);
-      letter-spacing: -0.3px;
-    }
-
-    .welcome-desc {
-      font-size: 13.5px;
-      color: var(--text-muted);
-      max-width: 460px;
-      line-height: 1.5;
-    }
-
-    /* Messages Stream */
-    .message-row {
-      display: flex;
-      flex-direction: column;
-      width: 100%;
-      animation: fadeIn 0.15s ease-out;
-    }
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(4px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-
-    .message-row.user {
-      align-items: flex-end;
-    }
-
-    .message-row.agent {
-      align-items: flex-start;
-    }
-
-    .message-bubble {
-      font-size: 14.5px;
-      line-height: 1.65;
-      word-break: break-word;
-      max-width: 82%;
-    }
-
-    .message-row.user .message-bubble {
-      background-color: var(--bg-user-msg);
-      padding: 10px 16px;
-      border-radius: 18px;
-      color: var(--text-main);
-    }
-
-    .message-row.agent .message-bubble {
-      background-color: transparent;
-      padding: 4px 0;
-      color: var(--text-main);
-      max-width: 100%;
-    }
-
-    /* Citations / Evidence Pill */
-    .citation-box {
-      margin-top: 10px;
-      border: 1px solid var(--border-subtle);
-      border-radius: 8px;
-      background-color: var(--citation-bg);
-      overflow: hidden;
-      width: 100%;
-      max-width: 100%;
-    }
-
-    .citation-header {
-      padding: 6px 12px;
-      font-size: 11.5px;
-      font-weight: 600;
-      color: var(--text-secondary);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      cursor: pointer;
-      user-select: none;
-      background-color: var(--bg-surface);
-    }
-
-    .citation-content {
-      padding: 10px 12px;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-
-    .citation-item {
-      font-size: 12px;
-      color: var(--text-secondary);
-      border-left: 2px solid var(--border-strong);
-      padding-left: 8px;
-    }
-
-    .citation-tag {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 11px;
-      font-weight: 600;
-      color: var(--text-main);
-      margin-bottom: 2px;
-    }
-
-    /* Bottom Fixed Composer (ChatGPT Style) */
-    .chat-composer-container {
-      flex: 0 0 auto;
-      padding: 8px 20px 16px 20px;
-      background: transparent;
-      position: relative;
-      z-index: 30;
-    }
-
-    .composer-inner {
-      max-width: 800px;
-      width: 100%;
-      margin: 0 auto;
-    }
-
-    .composer-form {
-      display: flex;
-      align-items: flex-end;
-      gap: 8px;
-      background-color: var(--bg-surface);
-      border: 1px solid var(--border-subtle);
-      border-radius: 24px;
-      padding: 8px 10px 8px 12px;
-      box-shadow: var(--composer-shadow);
-      transition: border-color 0.15s ease;
-    }
-
-    .composer-form:focus-within {
-      border-color: var(--border-strong);
-    }
-
-    .composer-textarea {
-      flex: 1;
-      border: none;
-      background: transparent;
-      color: var(--text-main);
-      font-family: inherit;
-      font-size: 14.5px;
-      line-height: 1.5;
-      resize: none;
-      outline: none;
-      min-height: 24px;
-      max-height: 180px;
-      padding: 4px 2px;
-    }
-
-    .composer-textarea::placeholder {
-      color: var(--text-muted);
-    }
-
-    .composer-btn {
-      width: 32px;
-      height: 32px;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      border: none;
-      cursor: pointer;
-      flex-shrink: 0;
-      transition: opacity 0.15s, background-color 0.15s;
-    }
-
-    .attach-btn {
-      background: transparent;
-      color: var(--text-secondary);
-    }
-
-    .attach-btn:hover {
-      background-color: var(--bg-surface-hover);
-      color: var(--text-main);
-    }
-
-    .send-btn {
-      background-color: var(--accent-btn-bg);
-      color: var(--accent-btn-color);
-    }
-
-    .send-btn:disabled {
-      opacity: 0.25;
-      cursor: not-allowed;
-    }
-
-    .send-btn:not(:disabled):hover {
-      opacity: 0.9;
-    }
-
-    .spinner-icon {
-      animation: spinAnim 1s linear infinite;
-    }
-    @keyframes spinAnim {
-      100% { transform: rotate(360deg); }
-    }
-
-    .composer-disclaimer {
-      font-size: 11px;
-      color: var(--text-muted);
-      text-align: center;
-      margin-top: 6px;
-    }
-
-    /* Backdrop for mobile drawer */
-    .sidebar-backdrop {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0, 0, 0, 0.4);
-      z-index: 35;
-      display: none;
-    }
-
-    .sidebar-backdrop.active {
-      display: block;
-    }
-
-    /* Accessibility: Respect Reduced Motion */
-    @media (prefers-reduced-motion: reduce) {
-      * {
-        animation-duration: 0.01ms !important;
-        animation-iteration-count: 1 !important;
-        transition-duration: 0.01ms !important;
-        scroll-behavior: auto !important;
-      }
-      .sidebar {
-        transition: none !important;
-      }
-      .ambient-glow {
-        animation: none !important;
-      }
-      .perspective-none {
-        perspective: none;
-      }
-      .transform-none {
-        transform: none !important;
-      }
-    }
-
-    /* Responsive: Mobile & Narrow Screens */
-    @media (max-width: 899px) {
-      .sidebar {
-        position: fixed;
-        top: 48px;
-        left: 0;
-        height: calc(100vh - 48px);
-        height: calc(100dvh - 48px);
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
-      }
-      .sidebar.collapsed {
-        transform: translateX(-100%);
-      }
-      .chat-content-container {
-        padding: 16px 14px;
-      }
-      .chat-composer-container {
-        padding: 8px 12px 14px 12px;
-      }
-    }
-  </style>
-</head>
-<body>
-  <div class="app-shell" id="appShell">
-    <!-- Subtle Ambient Animated Background Layer -->
-    <div class="ambient-background" aria-hidden="true">
-      <div class="ambient-glow glow-1"></div>
-      <div class="ambient-glow glow-2"></div>
-      <canvas id="ambientCanvas" class="ambient-canvas"></canvas>
+<AppLayout title="Chat — Onyx Knowledge Workspace" activeRoute="chat">
+  <div class="chat-workspace">
+    <!-- Messages Scrollable Viewport -->
+    <div class="chat-scroll-area" id="chatScrollArea">
+      <div class="chat-content-column" id="chatMessageColumn">
+        <!-- Welcoming Empty State -->
+        <ChatEmptyState />
+      </div>
     </div>
 
-    <!-- Compact Top Header -->
-    <header class="app-header">
-      <div class="header-left">
-        <!-- Sidebar Toggle Icon Button -->
-        <button class="icon-btn" id="sidebarToggleBtn" aria-label="Toggle sidebar" title="Toggle sidebar">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-            <line x1="9" y1="3" x2="9" y2="21"></line>
-          </svg>
-        </button>
-        <div class="header-brand">
-          <span>Rig Knowledge Agent</span>
-        </div>
-      </div>
-
-      <div class="header-right">
-        <!-- Delete Current Chat Button -->
-        <button class="icon-btn" id="headerDeleteChatBtn" aria-label="Delete current chat" title="Delete current chat">
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="3 6 5 6 21 6"></polyline>
-            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-            <line x1="10" y1="11" x2="10" y2="17"></line>
-            <line x1="14" y1="11" x2="14" y2="17"></line>
-          </svg>
-        </button>
-        <!-- Header New Chat Button -->
-        <button class="icon-btn" id="headerNewChatBtn" aria-label="New chat" title="New chat">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 5v14M5 12h14"></path>
-          </svg>
-        </button>
-        <!-- Theme Toggle Button -->
-        <button class="icon-btn" id="themeToggleBtn" aria-label="Toggle theme" title="Toggle theme">
-          <span id="themeIcon">🌓</span>
-        </button>
-      </div>
-    </header>
-
-    <!-- Main Container -->
-    <div class="app-main">
-      <!-- Left Sidebar (Collapsible, 50% History / 50% Documents) -->
-      <aside class="sidebar" id="sidebar">
-        <!-- Upper Half: Conversations (~50%) -->
-        <section class="sidebar-section">
-          <div class="sidebar-section-header">
-            <span class="section-title">Conversations</span>
-            <button class="btn-sidebar-action" id="sidebarNewChatBtn" title="Start new session">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M12 5v14M5 12h14"></path>
-              </svg>
-              <span>New</span>
-            </button>
-          </div>
-          <div class="sidebar-section-content" id="sessionList">
-            <!-- Dynamically populated conversations -->
-          </div>
-        </section>
-
-        <div class="sidebar-divider"></div>
-
-        <!-- Lower Half: Documents (~50%) -->
-        <section class="sidebar-section">
-          <div class="sidebar-section-header">
-            <span class="section-title">Documents (<span id="docCount">0</span>)</span>
-            <button class="btn-sidebar-action" id="sidebarUploadBtn" title="Upload knowledge file">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"></path>
-              </svg>
-              <span>Add</span>
-            </button>
-          </div>
-          <!-- Hidden file input for native file picker -->
-          <input type="file" id="fileInput" multiple style="display:none;" />
-          
-          <!-- Live upload status banner -->
-          <div class="upload-status-indicator" id="uploadStatusBanner" style="display:none;"></div>
-
-          <div class="sidebar-section-content" id="docList">
-            <!-- Dynamically populated documents -->
-          </div>
-        </section>
-      </aside>
-
-      <!-- Mobile Backdrop -->
-      <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
-
-      <!-- Main Chat Area (fills remainder of space) -->
-      <main class="chat-panel">
-        <!-- Scrollable Conversation Region -->
-        <div class="chat-history" id="chatHistory">
-          <div class="chat-content-container" id="chatContainer">
-            <!-- Small Unobtrusive Welcome for Fresh Session -->
-            <div class="welcome-container" id="welcomeBox">
-              <div class="welcome-badge">R</div>
-              <h1 class="welcome-title">How can I help with your documents today?</h1>
-              <p class="welcome-desc">Ask questions, resolve details from your task lists and technical guides, or synthesize cross-document information.</p>
-            </div>
-          </div>
-        </div>
-
-        <!-- Fixed Bottom Composer (ChatGPT Style) -->
-        <div class="chat-composer-container">
-          <div class="composer-inner">
-            <form class="composer-form" id="chatForm">
-              <!-- Attachment Button (Paperclip) -->
-              <button type="button" class="composer-btn attach-btn" id="composerAttachBtn" aria-label="Attach document" title="Attach knowledge document">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path>
-                </svg>
-              </button>
-
-              <!-- Auto-resizing Textarea Input -->
-              <textarea
-                id="queryInput"
-                class="composer-textarea"
-                rows="1"
-                placeholder="Ask anything about your documents..."
-                autocomplete="off"
-              ></textarea>
-
-              <!-- Circular Arrow Send Button -->
-              <button type="submit" class="composer-btn send-btn" id="sendBtn" aria-label="Send message" title="Send message" disabled>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                  <line x1="12" y1="19" x2="12" y2="5"></line>
-                  <polyline points="5 12 12 5 19 12"></polyline>
-                </svg>
-              </button>
-            </form>
-            <div class="composer-disclaimer">
-              Rig Knowledge Agent can make mistakes. Verify cited references for factual accuracy.
-            </div>
-          </div>
-        </div>
-      </main>
-    </div>
+    <!-- Pinned ChatGPT-Style Bottom Composer -->
+    <ChatComposer />
   </div>
 
-  <!-- Client Application Script -->
   <script>
-    // State Management
-    let activeSessionId = localStorage.getItem('rag_session_id') || ('sess_' + Math.random().toString(36).substring(2, 10));
-    let currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
+    import { renderMarkdown, escapeHtml } from '../lib/onyx/markdown';
+    import { streamChatCompletion } from '../lib/onyx/streaming';
+    import { getConversation, deleteConversation } from '../lib/onyx/conversations';
+
+    // Application Chat State
+    let activeSessionId = localStorage.getItem('onyx_session_id') || ('sess_' + Math.random().toString(36).substring(2, 10));
+    localStorage.setItem('onyx_session_id', activeSessionId);
+
     let isGenerating = false;
-    let loadedDocs = [];
+    let abortController: AbortController | null = null;
+    let attachedFiles: File[] = [];
 
     // DOM Elements
-    const sidebar = document.getElementById('sidebar');
-    const sidebarToggleBtn = document.getElementById('sidebarToggleBtn');
-    const sidebarBackdrop = document.getElementById('sidebarBackdrop');
-    const headerNewChatBtn = document.getElementById('headerNewChatBtn');
-    const headerDeleteChatBtn = document.getElementById('headerDeleteChatBtn');
-    const sidebarNewChatBtn = document.getElementById('sidebarNewChatBtn');
-    const themeToggleBtn = document.getElementById('themeToggleBtn');
-    const sessionList = document.getElementById('sessionList');
-    const docList = document.getElementById('docList');
-    const docCount = document.getElementById('docCount');
-    const sidebarUploadBtn = document.getElementById('sidebarUploadBtn');
-    const composerAttachBtn = document.getElementById('composerAttachBtn');
-    const fileInput = document.getElementById('fileInput');
-    const uploadStatusBanner = document.getElementById('uploadStatusBanner');
-    const chatHistory = document.getElementById('chatHistory');
-    const chatContainer = document.getElementById('chatContainer');
-    const welcomeBox = document.getElementById('welcomeBox');
-    const chatForm = document.getElementById('chatForm');
-    const queryInput = document.getElementById('queryInput');
-    const sendBtn = document.getElementById('sendBtn');
+    const chatScrollArea = document.getElementById('chatScrollArea')!;
+    const messageColumn = document.getElementById('chatMessageColumn')!;
+    const emptyState = document.getElementById('chatEmptyState')!;
+    const queryInput = document.getElementById('composerQueryInput') as HTMLTextAreaElement;
+    const sendBtn = document.getElementById('composerSendBtn') as HTMLButtonElement;
+    const stopBtn = document.getElementById('composerStopBtn') as HTMLButtonElement;
+    const attachBtn = document.getElementById('composerAttachBtn') as HTMLButtonElement;
+    const fileInput = document.getElementById('composerFileInput') as HTMLInputElement;
+    const attachmentsArea = document.getElementById('composerAttachmentsArea')!;
+    const headerDeleteBtn = document.getElementById('headerDeleteChatBtn');
+    const headerNewBtn = document.getElementById('headerNewChatBtn');
+    const sidebarNewBtn = document.getElementById('sidebarNewChatBtn');
 
-    // Sidebar Collapse/Expand Toggle
-    function toggleSidebar() {
-      const isCollapsed = sidebar.classList.toggle('collapsed');
-      localStorage.setItem('rag_sidebar_collapsed', isCollapsed ? 'true' : 'false');
-      if (window.innerWidth <= 899) {
-        sidebarBackdrop.classList.toggle('active', !isCollapsed);
-      }
-    }
-
-    sidebarToggleBtn.addEventListener('click', toggleSidebar);
-    sidebarBackdrop.addEventListener('click', () => {
-      sidebar.classList.add('collapsed');
-      sidebarBackdrop.classList.remove('active');
-    });
-
-    // Restore sidebar state
-    if (localStorage.getItem('rag_sidebar_collapsed') === 'true' && window.innerWidth > 899) {
-      sidebar.classList.add('collapsed');
-    }
-
-    // Theme Switcher
-    function toggleTheme() {
-      const nextTheme = currentTheme === 'dark' ? 'light' : 'dark';
-      currentTheme = nextTheme;
-      document.documentElement.setAttribute('data-theme', nextTheme);
-      localStorage.setItem('rag_theme', nextTheme);
-    }
-    themeToggleBtn.addEventListener('click', toggleTheme);
-
-    // Dynamic Send Button State
-    function updateSendButtonState() {
-      const hasText = queryInput.value.trim().length > 0;
+    // 1. Textarea Auto-Resize & Button State
+    function updateSendState() {
+      const hasText = queryInput.value.trim().length > 0 || attachedFiles.length > 0;
       sendBtn.disabled = !hasText || isGenerating;
+
       if (isGenerating) {
-        sendBtn.setAttribute('aria-label', 'Generating response...');
-        sendBtn.innerHTML = `
-          <svg class="spinner-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-            <circle cx="12" cy="12" r="10" stroke-dasharray="45" stroke-dashoffset="15" stroke-linecap="round"></circle>
-          </svg>
-        `;
+        sendBtn.style.display = 'none';
+        stopBtn.style.display = 'inline-flex';
       } else {
-        sendBtn.setAttribute('aria-label', 'Send message');
-        sendBtn.innerHTML = `
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="12" y1="19" x2="12" y2="5"></line>
-            <polyline points="5 12 12 5 19 12"></polyline>
-          </svg>
-        `;
+        sendBtn.style.display = 'inline-flex';
+        stopBtn.style.display = 'none';
       }
     }
 
-    function resizeTextarea() {
+    function resizeInput() {
       queryInput.style.height = 'auto';
       queryInput.style.height = Math.min(queryInput.scrollHeight, 180) + 'px';
     }
 
     queryInput.addEventListener('input', () => {
-      resizeTextarea();
-      updateSendButtonState();
-    });
-    queryInput.addEventListener('keyup', updateSendButtonState);
-    queryInput.addEventListener('change', updateSendButtonState);
-    queryInput.addEventListener('paste', () => {
-      setTimeout(() => {
-        resizeTextarea();
-        updateSendButtonState();
-      }, 20);
+      resizeInput();
+      updateSendState();
     });
 
-    // Enter sends, Shift+Enter inserts newline
     queryInput.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
         if (!sendBtn.disabled && !isGenerating) {
-          handleChatSubmit();
+          handleSendMessage();
         }
       }
     });
 
-    // New Chat Action
-    function createNewChat() {
-      if (isGenerating) return;
-      activeSessionId = 'sess_' + Math.random().toString(36).substring(2, 10);
-      localStorage.setItem('rag_session_id', activeSessionId);
-      
-      chatContainer.innerHTML = '';
-      if (welcomeBox) chatContainer.appendChild(welcomeBox);
-      welcomeBox.style.display = 'flex';
-      
-      loadSessions();
-      queryInput.value = '';
-      resizeTextarea();
-      updateSendButtonState();
+    // 2. Global Prompt Ingestion (from empty state cards)
+    (window as any).populateComposerPrompt = function(promptText: string) {
+      queryInput.value = promptText;
+      resizeInput();
+      updateSendState();
       queryInput.focus();
+    };
 
-      if (window.innerWidth <= 899) {
-        sidebar.classList.add('collapsed');
-        sidebarBackdrop.classList.remove('active');
-      }
-    }
+    // 3. Attachments Handling
+    attachBtn.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', (e) => {
+      const target = e.target as HTMLInputElement;
+      if (!target.files) return;
+      Array.from(target.files).forEach(f => attachedFiles.push(f));
+      renderAttachmentChips();
+      updateSendState();
+      fileInput.value = '';
+    });
 
-    headerNewChatBtn.addEventListener('click', createNewChat);
-    sidebarNewChatBtn.addEventListener('click', createNewChat);
-
-    if (headerDeleteChatBtn) {
-      headerDeleteChatBtn.addEventListener('click', () => {
-        deleteCurrentChat();
-      });
-    }
-
-    // Load Sessions History
-    async function loadSessions() {
-      try {
-        const res = await fetch('/api/conversations');
-        if (!res.ok) return;
-        const convs = await res.json();
-        sessionList.innerHTML = '';
-
-        if (convs.length === 0) {
-          sessionList.innerHTML = '<div style="color:var(--text-muted);font-size:12px;padding:8px 6px;">No previous chats yet.</div>';
-          return;
-        }
-
-        convs.forEach(c => {
-          const item = document.createElement('div');
-          item.className = `session-item ${c.id === activeSessionId ? 'active' : ''}`;
-          item.innerHTML = `
-            <div class="session-left">
-              <span class="session-icon">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-                </svg>
-              </span>
-              <span class="session-title" title="${escapeHtml(c.title || c.id)}">${escapeHtml(c.title || c.id)}</span>
-            </div>
-            <button class="btn-delete-session" title="Delete chat" aria-label="Delete chat" onclick="event.stopPropagation(); confirmDeleteSession('${c.id}', '${escapeHtml(c.title || c.id)}')">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="3 6 5 6 21 6"></polyline>
-                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-              </svg>
-            </button>
-          `;
-          item.onclick = (e) => {
-            if (e.target.closest('.btn-delete-session')) return;
-            switchSession(c.id);
-          };
-          sessionList.appendChild(item);
-        });
-      } catch (err) {
-        console.error('Failed to load conversations:', err);
-      }
-    }
-
-    async function confirmDeleteSession(sessionId, title) {
-      if (isGenerating) {
-        alert('Please wait for the current response to finish before deleting.');
+    function renderAttachmentChips() {
+      if (attachedFiles.length === 0) {
+        attachmentsArea.style.display = 'none';
+        attachmentsArea.innerHTML = '';
         return;
       }
-      const displayTitle = title ? `"${title}"` : 'this chat';
-      if (!confirm(`Are you sure you want to delete ${displayTitle}?`)) {
-        return;
-      }
-
-      try {
-        const res = await fetch('/api/conversations/delete', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ conversation_id: sessionId })
-        });
-
-        if (!res.ok) {
-          throw new Error(`Server returned HTTP ${res.status}`);
-        }
-
-        const data = await res.json();
-        if (data && data.success === false) {
-          throw new Error(data.error || 'Failed to delete');
-        }
-
-        // If the deleted session was the currently active one, reset to a fresh chat
-        if (sessionId === activeSessionId) {
-          createNewChat();
-        } else {
-          await loadSessions();
-        }
-      } catch (err) {
-        console.error('Failed to delete chat:', err);
-        alert('Failed to delete chat: ' + err.message);
-      }
-    }
-    window.confirmDeleteSession = confirmDeleteSession;
-
-    function deleteCurrentChat() {
-      confirmDeleteSession(activeSessionId, 'the current conversation');
-    }
-    window.deleteCurrentChat = deleteCurrentChat;
-
-    async function switchSession(sessionId) {
-      if (sessionId === activeSessionId || isGenerating) return;
-      activeSessionId = sessionId;
-      localStorage.setItem('rag_session_id', activeSessionId);
-      loadSessions();
-      await loadSessionMessages(sessionId);
-
-      if (window.innerWidth <= 899) {
-        sidebar.classList.add('collapsed');
-        sidebarBackdrop.classList.remove('active');
-      }
+      attachmentsArea.style.display = 'flex';
+      attachmentsArea.innerHTML = attachedFiles.map((file, idx) => `
+        <span class="attachment-chip">
+          <span>📄</span>
+          <span>${escapeHtml(file.name)}</span>
+          <button type="button" class="btn-remove-attachment" onclick="window.removeAttachment(${idx})">✕</button>
+        </span>
+      `).join('');
     }
 
-    async function loadSessionMessages(sessionId) {
-      try {
-        const res = await fetch(`/api/conversations/${sessionId}`);
-        if (!res.ok) return;
-        const data = await res.json();
-        chatContainer.innerHTML = '';
+    (window as any).removeAttachment = function(idx: number) {
+      attachedFiles.splice(idx, 1);
+      renderAttachmentChips();
+      updateSendState();
+    };
 
-        const msgs = data.messages || [];
-        if (msgs.length === 0) {
-          if (welcomeBox) {
-            welcomeBox.style.display = 'flex';
-            chatContainer.appendChild(welcomeBox);
-          }
-          return;
-        }
-
-        if (welcomeBox) welcomeBox.style.display = 'none';
-
-        msgs.forEach(m => {
-          let sources = [];
-          if (m.sources_json) {
-            try { sources = typeof m.sources_json === 'string' ? JSON.parse(m.sources_json) : m.sources_json; } catch(e) {}
-          }
-          renderMessage(m.role === 'assistant' ? 'agent' : m.role, formatMarkdown(m.content), sources);
-        });
-
-        chatHistory.scrollTop = chatHistory.scrollHeight;
-      } catch (err) {
-        console.error('Failed to load session messages:', err);
-      }
-    }
-
-    // Document Catalog Management
-    async function loadDocuments() {
-      try {
-        const res = await fetch('/api/documents');
-        if (!res.ok) return;
-        const docs = await res.json();
-        loadedDocs = docs;
-        docCount.innerText = docs.length;
-        docList.innerHTML = '';
-
-        if (docs.length === 0) {
-          docList.innerHTML = '<div style="color:var(--text-muted);font-size:12px;padding:8px 6px;">No uploaded documents yet.</div>';
-          return;
-        }
-
-        docs.forEach(d => {
-          const item = document.createElement('div');
-          item.className = 'doc-item';
-          const ext = d.file_format ? d.file_format.replace('.', '') : 'FILE';
-
-          item.innerHTML = `
-            <div class="doc-left">
-              <span class="doc-badge">${escapeHtml(ext)}</span>
-              <div class="doc-info">
-                <span class="doc-filename" title="${escapeHtml(d.filename)}">${escapeHtml(d.filename)}</span>
-                <span class="doc-meta">${d.total_chunks || 0} chunks</span>
-              </div>
-            </div>
-            <button class="btn-delete-doc" title="Remove document" onclick="confirmDeleteDoc('${d.id}', '${escapeHtml(d.filename)}')">✕</button>
-          `;
-          docList.appendChild(item);
-        });
-      } catch (err) {
-        console.error('Failed to load documents:', err);
-      }
-    }
-
-    // Document Removal with Confirmation
-    async function confirmDeleteDoc(docId, filename) {
-      if (!confirm(`Are you sure you want to remove "${filename}" from the document catalog?`)) {
-        return;
-      }
-      try {
-        const res = await fetch('/api/documents/remove', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ document_id: docId })
-        });
-        const result = await res.json();
-        if (result.success) {
-          await loadDocuments();
-        } else {
-          alert('Failed to remove document.');
-        }
-      } catch (err) {
-        alert('Error removing document: ' + err.message);
-      }
-    }
-    window.confirmDeleteDoc = confirmDeleteDoc;
-
-    // Document Upload Handling
-    sidebarUploadBtn.addEventListener('click', () => fileInput.click());
-    composerAttachBtn.addEventListener('click', () => fileInput.click());
-    fileInput.addEventListener('change', (e) => handleFileUpload(e.target.files));
-
-    async function handleFileUpload(fileList) {
-      if (!fileList || fileList.length === 0) return;
-      const files = Array.from(fileList);
-
-      uploadStatusBanner.style.display = 'flex';
-      uploadStatusBanner.innerText = `Ingesting ${files.length} document(s)...`;
-
-      const formData = new FormData();
-      files.forEach(f => formData.append('files', f));
-
-      try {
-        const res = await fetch('/api/upload', { method: 'POST', body: formData });
-        const results = await res.json();
-        
-        uploadStatusBanner.innerText = 'Document indexed and ready!';
-        await loadDocuments();
-
-        setTimeout(() => {
-          uploadStatusBanner.style.display = 'none';
-        }, 3000);
-      } catch (err) {
-        uploadStatusBanner.innerText = 'Failed to index file.';
-        setTimeout(() => {
-          uploadStatusBanner.style.display = 'none';
-        }, 4000);
-      } finally {
-        fileInput.value = '';
-      }
-    }
-
-    // Message Rendering
-    function renderMessage(role, htmlContent, sources = []) {
-      if (welcomeBox) welcomeBox.style.display = 'none';
+    // 4. Render Message Row
+    function appendMessageRow(role: 'user' | 'assistant', initialHtml: string, sources: any[] = []) {
+      emptyState.style.display = 'none';
 
       const row = document.createElement('div');
-      row.className = `message-row ${role === 'user' ? 'user' : 'agent'}`;
+      row.className = `message-row ${role}`;
+
+      const header = document.createElement('div');
+      header.className = 'message-header';
+      header.innerText = role === 'user' ? 'You' : 'Onyx Knowledge Agent';
+      row.appendChild(header);
 
       const bubble = document.createElement('div');
       bubble.className = 'message-bubble';
-      bubble.innerHTML = htmlContent;
+      bubble.innerHTML = initialHtml;
       row.appendChild(bubble);
 
       if (sources && sources.length > 0) {
-        const citationBox = renderCitationBox(sources);
-        row.appendChild(citationBox);
+        const citationPanel = createCitationPanel(sources);
+        row.appendChild(citationPanel);
       }
 
-      chatContainer.appendChild(row);
-      chatHistory.scrollTop = chatHistory.scrollHeight;
+      // Actions bar for assistant
+      if (role === 'assistant') {
+        const actions = document.createElement('div');
+        actions.className = 'message-actions';
+        actions.innerHTML = `
+          <button class="btn-msg-action" onclick="navigator.clipboard.writeText(this.closest('.message-row').querySelector('.message-bubble').innerText); this.innerText = 'Copied!'; setTimeout(() => this.innerText = 'Copy', 2000);">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+            <span>Copy</span>
+          </button>
+        `;
+        row.appendChild(actions);
+      }
+
+      messageColumn.appendChild(row);
+      chatScrollArea.scrollTop = chatScrollArea.scrollHeight;
       return bubble;
     }
 
-    function renderCitationBox(sources) {
-      const box = document.createElement('div');
-      box.className = 'citation-box';
-      box.innerHTML = `
-        <div class="citation-header" onclick="const c = this.nextElementSibling; c.style.display = c.style.display === 'none' ? 'flex' : 'none';">
+    function createCitationPanel(sources: any[]) {
+      const panel = document.createElement('div');
+      panel.className = 'citation-panel';
+      panel.innerHTML = `
+        <div class="citation-header" onclick="const list = this.nextElementSibling; list.style.display = list.style.display === 'none' ? 'flex' : 'none';">
           <span>Sources & Citations (${sources.length})</span>
-          <span style="font-size:10px;">▼</span>
+          <span style="font-size: 10px;">▼</span>
         </div>
-        <div class="citation-content" style="display:none;">
+        <div class="citation-list" style="display: none;">
           ${sources.map(s => `
-            <div class="citation-item">
-              <div class="citation-tag">[${escapeHtml(s.filename)} | ${escapeHtml(s.source_location || 'Page 1')}]</div>
-              <div>${escapeHtml(s.content ? s.content.substring(0, 240) + '...' : '')}</div>
+            <div class="citation-card">
+              <div class="citation-meta">
+                <span>📄 ${escapeHtml(s.filename || 'Document')}</span>
+                ${s.source_location ? `<span>[${escapeHtml(s.source_location)}]</span>` : ''}
+              </div>
+              <div class="citation-snippet">${escapeHtml(s.content ? s.content.substring(0, 240) + '...' : '')}</div>
             </div>
           `).join('')}
         </div>
       `;
-      return box;
+      return panel;
     }
 
-    // Primary Chat Submission Routine
-    async function handleChatSubmit() {
+    // 5. Primary Send Routine
+    async function handleSendMessage() {
       if (isGenerating) return;
       const query = queryInput.value.trim();
-      if (!query) return;
+      if (!query && attachedFiles.length === 0) return;
 
       isGenerating = true;
-      updateSendButtonState();
+      updateSendState();
 
-      const submittedText = query;
+      const userText = query;
       queryInput.value = '';
-      resizeTextarea();
+      resizeInput();
 
-      renderMessage('user', escapeHtml(submittedText));
-      const agentBubble = renderMessage('agent', '<span style="color:var(--text-muted)">Thinking...</span>');
+      // Render user message
+      appendMessageRow('user', escapeHtml(userText));
 
-      const requestSessionId = activeSessionId;
+      // Render placeholder assistant bubble
+      const agentBubble = appendMessageRow('assistant', '<span style="color:var(--text-muted);">Thinking...</span>');
+      abortController = new AbortController();
+
+      let gatheredSources: any[] = [];
+      let gatheredText = '';
 
       try {
-        const response = await fetch('/api/chat', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            query: submittedText,
-            session_id: requestSessionId,
-            conversation_id: requestSessionId
-          })
-        });
-
-        if (!response.ok) {
-          const errData = await response.json();
-          throw new Error(errData.error || `HTTP ${response.status}`);
-        }
-
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-        let fullAnswer = '';
-        let sources = [];
-        let buffer = '';
-
-        try {
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-
-            buffer += decoder.decode(value, { stream: true });
-            const parts = buffer.split('\n\n');
-            buffer = parts.pop();
-
-            let shouldStop = false;
-            for (const part of parts) {
-              const trimmed = part.trim();
-              if (!trimmed) continue;
-              const lines = trimmed.split('\n');
-
-              for (const line of lines) {
-                if (line.startsWith('data: ')) {
-                  try {
-                    const ev = JSON.parse(line.substring(6));
-                    if (ev.session_id && ev.session_id !== activeSessionId) continue;
-
-                    if (ev.type === 'context') {
-                      sources = ev.data || [];
-                    } else if (ev.type === 'token') {
-                      fullAnswer += ev.token;
-                      agentBubble.innerHTML = formatMarkdown(fullAnswer);
-                      chatHistory.scrollTop = chatHistory.scrollHeight;
-                    } else if (ev.type === 'done') {
-                      agentBubble.innerHTML = formatMarkdown(fullAnswer);
-                      if (sources.length > 0) {
-                        const row = agentBubble.closest('.message-row');
-                        if (row && !row.querySelector('.citation-box')) {
-                          row.appendChild(renderCitationBox(sources));
-                        }
-                      }
-                      loadSessions();
-                      shouldStop = true;
-                    } else if (ev.type === 'error') {
-                      agentBubble.innerHTML = `<span style="color:var(--status-danger)">Error: ${escapeHtml(ev.message)}</span>`;
-                      shouldStop = true;
-                    }
-                  } catch(pe) {}
-                }
+        await streamChatCompletion({
+          query: userText,
+          sessionId: activeSessionId,
+          signal: abortController.signal,
+          onContext: (citations) => {
+            gatheredSources = citations;
+          },
+          onToken: (token) => {
+            gatheredText += token;
+            agentBubble.innerHTML = renderMarkdown(gatheredText);
+            chatScrollArea.scrollTop = chatScrollArea.scrollHeight;
+          },
+          onDone: (finalText) => {
+            agentBubble.innerHTML = renderMarkdown(finalText);
+            if (gatheredSources.length > 0) {
+              const row = agentBubble.closest('.message-row');
+              if (row && !row.querySelector('.citation-panel')) {
+                row.appendChild(createCitationPanel(gatheredSources));
               }
             }
-            if (shouldStop) {
-              try { await reader.cancel(); } catch(e) {}
-              break;
+            if ((window as any).refreshSidebarConversations) {
+              (window as any).refreshSidebarConversations();
             }
+          },
+          onError: (errMsg) => {
+            agentBubble.innerHTML = `<span style="color:var(--status-danger)">Error: ${escapeHtml(errMsg)}</span>`;
           }
-        } finally {
-          try { reader.releaseLock(); } catch(e) {}
-        }
-      } catch (err) {
-        if (requestSessionId === activeSessionId) {
-          agentBubble.innerHTML = `<span style="color:var(--status-danger)">Request Failed: ${escapeHtml(err.message)}</span>`;
-          queryInput.value = submittedText; // preserve text on failure
-          resizeTextarea();
+        });
+      } catch (err: any) {
+        if (err.name === 'AbortError') {
+          agentBubble.innerHTML += '<br><span style="color:var(--text-muted);font-size:12px;">(Generation paused)</span>';
+        } else {
+          agentBubble.innerHTML = `<span style="color:var(--status-danger)">Request failed: ${escapeHtml(err.message)}</span>`;
+          queryInput.value = userText; // preserve text
+          resizeInput();
         }
       } finally {
         isGenerating = false;
-        updateSendButtonState();
+        abortController = null;
+        updateSendState();
         queryInput.focus();
       }
     }
 
-    chatForm.addEventListener('submit', (e) => {
-      e.preventDefault();
-      handleChatSubmit();
+    sendBtn.addEventListener('click', handleSendMessage);
+    stopBtn.addEventListener('click', () => {
+      if (abortController) {
+        abortController.abort();
+      }
     });
 
-    // Formatting utilities
-    function escapeHtml(text) {
-      if (!text) return '';
-      return String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    }
+    // 6. Session Lifecycle & Loading
+    async function loadActiveSession(sessionId: string) {
+      activeSessionId = sessionId;
+      localStorage.setItem('onyx_session_id', activeSessionId);
+      
+      messageColumn.innerHTML = '';
+      emptyState.style.display = 'flex';
+      messageColumn.appendChild(emptyState);
 
-    function formatMarkdown(text) {
-      if (!text) return '';
-      return escapeHtml(text)
-        .replace(/```([\s\S]*?)```/g, '<pre style="background:var(--bg-surface);padding:10px;border-radius:6px;border:1px solid var(--border-subtle);overflow-x:auto;margin:8px 0;font-family:\'JetBrains Mono\',monospace;font-size:13px;"><code>$1</code></pre>')
-        .replace(/`([^`]+)`/g, '<code style="background:var(--bg-surface);padding:2px 6px;border-radius:4px;font-family:\'JetBrains Mono\',monospace;font-size:0.9em;border:1px solid var(--border-subtle);">$1</code>')
-        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-        .replace(/\[([^\]]+)\]/g, '<span style="font-weight:600;opacity:0.9;">[$1]</span>')
-        .replace(/\n\n/g, '<br><br>')
-        .replace(/\n/g, '<br>');
-    }
-
-    // Interactive 3D Ambient Canvas: 3D Wireframe Cubes & Orbiting Nodes
-    (function initAmbientCanvas() {
-      const canvas = document.getElementById('ambientCanvas');
-      if (!canvas) return;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
-
-      let dpr = Math.min(window.devicePixelRatio || 1, 2);
-      let width = 0;
-      let height = 0;
-
-      // 3D Elements Configuration: distributed across entire viewport
-      const nodeCount = 95;
-      const nodes = [];
-      const shapes3D = [];
-      const shapeCount = 10;
-
-      function resize() {
-        width = canvas.parentElement.offsetWidth;
-        height = canvas.parentElement.offsetHeight;
-        canvas.width = width * dpr;
-        canvas.height = height * dpr;
-        ctx.scale(dpr, dpr);
-      }
-
-      // Distribute nodes evenly throughout the full width and height
-      for (let i = 0; i < nodeCount; i++) {
-        nodes.push({
-          x: Math.random() * (window.innerWidth || 1200),
-          y: Math.random() * (window.innerHeight || 800),
-          z: Math.random() * 0.7 + 0.3, // depth ratio [0.3, 1.0]
-          vx: (Math.random() - 0.5) * 0.5,
-          vy: (Math.random() - 0.5) * 0.5,
-          radius: Math.random() * 2.5 + 1.2
-        });
-      }
-
-      // 3D Geometry definitions
-      const cubeVertices = [
-        [-1, -1, -1], [1, -1, -1], [1, 1, -1], [-1, 1, -1],
-        [-1, -1, 1], [1, -1, 1], [1, 1, 1], [-1, 1, 1]
-      ];
-      const cubeEdges = [
-        [0, 1], [1, 2], [2, 3], [3, 0],
-        [4, 5], [5, 6], [6, 7], [7, 4],
-        [0, 4], [1, 5], [2, 6], [3, 7]
-      ];
-
-      const octahedronVertices = [
-        [0, -1.3, 0], [0, 1.3, 0],
-        [-1, 0, -1], [1, 0, -1], [1, 0, 1], [-1, 0, 1]
-      ];
-      const octahedronEdges = [
-        [0, 2], [0, 3], [0, 4], [0, 5],
-        [1, 2], [1, 3], [1, 4], [1, 5],
-        [2, 3], [3, 4], [4, 5], [5, 2]
-      ];
-
-      // Distribute shapes across distinct screen regions (corners, edges, quadrants)
-      const regions = [
-        { x: 0.12, y: 0.20 }, // Top Left
-        { x: 0.88, y: 0.18 }, // Top Right
-        { x: 0.15, y: 0.82 }, // Bottom Left
-        { x: 0.85, y: 0.78 }, // Bottom Right
-        { x: 0.48, y: 0.15 }, // Top Center
-        { x: 0.52, y: 0.85 }, // Bottom Center
-        { x: 0.08, y: 0.52 }, // Far Left
-        { x: 0.92, y: 0.48 }, // Far Right
-        { x: 0.32, y: 0.38 }, // Upper Mid Left
-        { x: 0.68, y: 0.62 }  // Lower Mid Right
-      ];
-
-      for (let i = 0; i < shapeCount; i++) {
-        const reg = regions[i % regions.length];
-        const isOcta = i % 2 === 1;
-        shapes3D.push({
-          type: isOcta ? 'octa' : 'cube',
-          vertices: isOcta ? octahedronVertices : cubeVertices,
-          edges: isOcta ? octahedronEdges : cubeEdges,
-          x: reg.x * (window.innerWidth || 1200) + (Math.random() - 0.5) * 80,
-          y: reg.y * (window.innerHeight || 800) + (Math.random() - 0.5) * 80,
-          vx: (Math.random() - 0.5) * 0.38,
-          vy: (Math.random() - 0.5) * 0.38,
-          rotX: Math.random() * Math.PI * 2,
-          rotY: Math.random() * Math.PI * 2,
-          rotZ: Math.random() * Math.PI * 2,
-          vRotX: (Math.random() - 0.5) * 0.014 + 0.004,
-          vRotY: (Math.random() - 0.5) * 0.016 + 0.005,
-          vRotZ: (Math.random() - 0.5) * 0.01,
-          size: Math.random() * 22 + (isOcta ? 28 : 34)
-        });
-      }
-
-      resize();
-      window.addEventListener('resize', resize);
-
-      let animId;
-
-      function render() {
-        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches || document.hidden) {
-          animId = requestAnimationFrame(render);
+      try {
+        const data = await getConversation(sessionId);
+        if (!data || !data.messages || data.messages.length === 0) {
           return;
         }
 
-        ctx.clearRect(0, 0, width, height);
-
-        const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-
-        // 1. Render Distributed 3D Geometric Polyhedra across the screen
-        shapes3D.forEach(shape => {
-          shape.rotX += shape.vRotX;
-          shape.rotY += shape.vRotY;
-          shape.rotZ += shape.vRotZ;
-          shape.x += shape.vx;
-          shape.y += shape.vy;
-
-          const margin = 80;
-          if (shape.x < -margin) shape.x = width + margin;
-          else if (shape.x > width + margin) shape.x = -margin;
-          if (shape.y < -margin) shape.y = height + margin;
-          else if (shape.y > height + margin) shape.y = -margin;
-
-          const cosX = Math.cos(shape.rotX), sinX = Math.sin(shape.rotX);
-          const cosY = Math.cos(shape.rotY), sinY = Math.sin(shape.rotY);
-          const cosZ = Math.cos(shape.rotZ), sinZ = Math.sin(shape.rotZ);
-
-          const proj = shape.vertices.map(([vx, vy, vz]) => {
-            let x = vx * shape.size;
-            let y = vy * shape.size;
-            let z = vz * shape.size;
-
-            // Rotate Y
-            let rx = x * cosY + z * sinY;
-            let rz = -x * sinY + z * cosY;
-
-            // Rotate X
-            let ry = y * cosX - rz * sinX;
-            rz = y * sinX + rz * cosX;
-
-            // Rotate Z
-            let fx = rx * cosZ - ry * sinZ;
-            let fy = rx * sinZ + ry * cosZ;
-
-            // 3D perspective projection with focal depth
-            const depth = 380;
-            const persp = depth / (depth + rz);
-
-            return {
-              x: shape.x + fx * persp,
-              y: shape.y + fy * persp,
-              z: rz
-            };
-          });
-
-          // Draw edges with crisp theme contrast
-          ctx.lineWidth = 1.4;
-          shape.edges.forEach(([sIdx, eIdx]) => {
-            const v1 = proj[sIdx];
-            const v2 = proj[eIdx];
-            const avgZ = (v1.z + v2.z) * 0.5;
-            const depthAlpha = Math.max(0.12, Math.min(0.65, 0.40 + (avgZ / (shape.size * 2)) * 0.22));
-
-            ctx.strokeStyle = isDark
-              ? `rgba(147, 197, 253, ${depthAlpha.toFixed(3)})`
-              : `rgba(37, 99, 235, ${(depthAlpha * 1.05).toFixed(3)})`;
-
-            ctx.beginPath();
-            ctx.moveTo(v1.x, v1.y);
-            ctx.lineTo(v2.x, v2.y);
-            ctx.stroke();
-          });
+        emptyState.style.display = 'none';
+        data.messages.forEach(m => {
+          appendMessageRow(m.role as any, renderMarkdown(m.content), m.sources || []);
         });
 
-        // 2. Update and wrap nodes across the full screen
-        for (let i = 0; i < nodes.length; i++) {
-          const n = nodes[i];
-          n.x += n.vx;
-          n.y += n.vy;
-
-          if (n.x < 0) n.x = width;
-          else if (n.x > width) n.x = 0;
-          if (n.y < 0) n.y = height;
-          else if (n.y > height) n.y = 0;
-        }
-
-        // 3. Draw connecting filaments across the screen
-        for (let i = 0; i < nodes.length; i++) {
-          for (let j = i + 1; j < nodes.length; j++) {
-            const p1 = nodes[i];
-            const p2 = nodes[j];
-            const dx = p1.x - p2.x;
-            const dy = p1.y - p2.y;
-            const dist = Math.sqrt(dx * dx + dy * dy);
-
-            if (dist < 135) {
-              const alpha = (1 - dist / 135) * (p1.z + p2.z) * 0.5 * (isDark ? 0.38 : 0.34);
-              if (alpha > 0.02) {
-                ctx.strokeStyle = isDark
-                  ? `rgba(165, 180, 252, ${alpha.toFixed(3)})`
-                  : `rgba(30, 58, 138, ${(alpha * 1.15).toFixed(3)})`;
-                ctx.lineWidth = 1;
-                ctx.beginPath();
-                ctx.moveTo(p1.x, p1.y);
-                ctx.lineTo(p2.x, p2.y);
-                ctx.stroke();
-              }
-            }
-          }
-        }
-
-        // 4. Draw glowing nodes distributed across the viewport
-        for (let i = 0; i < nodes.length; i++) {
-          const n = nodes[i];
-          const nodeAlpha = Math.min(0.85, n.z * (isDark ? 0.70 : 0.60));
-          ctx.fillStyle = isDark
-            ? `rgba(191, 219, 254, ${nodeAlpha.toFixed(3)})`
-            : `rgba(29, 78, 216, ${(nodeAlpha * 1.1).toFixed(3)})`;
-
-          ctx.beginPath();
-          ctx.arc(n.x, n.y, n.radius * n.z, 0, Math.PI * 2);
-          ctx.fill();
-        }
-
-        animId = requestAnimationFrame(render);
+        chatScrollArea.scrollTop = chatScrollArea.scrollHeight;
+      } catch (err) {
+        console.warn('Failed to load session messages:', err);
       }
+    }
 
-      animId = requestAnimationFrame(render);
-    })();
+    function createNewSession() {
+      if (isGenerating && abortController) abortController.abort();
+      activeSessionId = 'sess_' + Math.random().toString(36).substring(2, 10);
+      localStorage.setItem('onyx_session_id', activeSessionId);
 
-    // Startup Initialization
-    loadDocuments();
-    loadSessions();
-    updateSendButtonState();
+      messageColumn.innerHTML = '';
+      emptyState.style.display = 'flex';
+      messageColumn.appendChild(emptyState);
+
+      const headerTitle = document.getElementById('activeConvHeaderTitle');
+      if (headerTitle) headerTitle.innerText = 'New Knowledge Session';
+
+      queryInput.value = '';
+      resizeInput();
+      updateSendState();
+      queryInput.focus();
+
+      if ((window as any).refreshSidebarConversations) {
+        (window as any).refreshSidebarConversations();
+      }
+    }
+
+    (window as any).switchChatSession = loadActiveSession;
+    (window as any).startNewChat = createNewSession;
+
+    if (headerNewBtn) headerNewBtn.addEventListener('click', createNewSession);
+    if (sidebarNewBtn) sidebarNewBtn.addEventListener('click', createNewSession);
+
+    if (headerDeleteBtn) {
+      headerDeleteBtn.addEventListener('click', async () => {
+        if (!confirm('Are you sure you want to delete this conversation?')) return;
+        await deleteConversation(activeSessionId);
+        createNewSession();
+      });
+    }
+
+    // Startup check: if session exists, load its history
+    loadActiveSession(activeSessionId);
+    updateSendState();
   </script>
-</body>
-</html>
+</AppLayout>

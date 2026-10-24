@@ -1,0 +1,166 @@
+/* ==========================================================================
+   Onyx Knowledge Workspace — Design Tokens & Foundations
+   ========================================================================== */
+
+:root {
+  /* Font Families */
+  --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  /* Typography Scale */
+  --text-xs: 11px;
+  --text-sm: 12.5px;
+  --text-base: 14px;
+  --text-md: 15px;
+  --text-lg: 17px;
+  --text-xl: 20px;
+  --text-2xl: 24px;
+  --text-3xl: 30px;
+
+  /* Spacing */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+
+  /* Radii */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 18px;
+  --radius-full: 9999px;
+
+  /* Layout Dimensions */
+  --header-height: 52px;
+  --sidebar-width-expanded: 260px;
+  --sidebar-width-collapsed: 60px;
+  --composer-max-width: 820px;
+  --chat-max-width: 860px;
+
+  /* Transitions */
+  --trans-fast: 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  --trans-normal: 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  --trans-smooth: 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ==========================================================================
+   Dark Theme (Default & Primary Brand Expression)
+   ========================================================================== */
+:root[data-theme="dark"],
+:root:not([data-theme="light"]) {
+  /* Surfaces & Backgrounds */
+  --bg-app: #0F0F12;
+  --bg-sidebar: #0B0B0E;
+  --bg-surface: #17171C;
+  --bg-surface-hover: #1E1E25;
+  --bg-surface-active: #25252E;
+  --bg-elevated: #1C1C22;
+  --bg-user-bubble: #1F1F27;
+  --bg-assistant-bubble: transparent;
+  --bg-code: #121216;
+
+  /* Borders & Dividers */
+  --border-subtle: rgba(255, 255, 255, 0.07);
+  --border-medium: rgba(255, 255, 255, 0.12);
+  --border-strong: rgba(255, 255, 255, 0.20);
+  --border-focus: rgba(99, 102, 241, 0.6);
+
+  /* Typography Colors */
+  --text-main: #F3F4F8;
+  --text-secondary: #A6A7B8;
+  --text-muted: #6C6D80;
+  --text-inverse: #0F0F12;
+
+  /* Brand & Accents */
+  --brand-primary: #6366F1;
+  --brand-primary-hover: #4F46E5;
+  --brand-cyan: #06B6D4;
+  --brand-violet: #8B5CF6;
+  --accent-btn-bg: #F3F4F8;
+  --accent-btn-color: #0F0F12;
+
+  /* Status Colors */
+  --status-success: #10B981;
+  --status-success-bg: rgba(16, 185, 129, 0.12);
+  --status-warning: #F59E0B;
+  --status-warning-bg: rgba(245, 158, 11, 0.12);
+  --status-danger: #EF4444;
+  --status-danger-bg: rgba(239, 68, 68, 0.12);
+  --status-info: #3B82F6;
+  --status-info-bg: rgba(59, 130, 246, 0.12);
+
+  /* Shadows & Glows */
+  --shadow-subtle: 0 2px 8px rgba(0, 0, 0, 0.25);
+  --shadow-dropdown: 0 10px 30px rgba(0, 0, 0, 0.5), 0 0 0 1px var(--border-medium);
+  --composer-shadow: 0 16px 40px rgba(0, 0, 0, 0.55), 0 0 0 1px var(--border-subtle);
+
+  /* Ambient 3D canvas tuning */
+  --ambient-glow-1: rgba(6, 182, 212, 0.12);
+  --ambient-glow-2: rgba(99, 102, 241, 0.14);
+  --wireframe-stroke: rgba(129, 140, 248, 0.32);
+  --node-color: rgba(165, 180, 252, 0.65);
+  --filament-color: rgba(99, 102, 241, 0.14);
+}
+
+/* ==========================================================================
+   Light Theme
+   ========================================================================== */
+:root[data-theme="light"] {
+  /* Surfaces & Backgrounds */
+  --bg-app: #FAFAFC;
+  --bg-sidebar: #F2F2F6;
+  --bg-surface: #FFFFFF;
+  --bg-surface-hover: #EAEAEF;
+  --bg-surface-active: #DFDFE7;
+  --bg-elevated: #FFFFFF;
+  --bg-user-bubble: #F0F1F6;
+  --bg-assistant-bubble: transparent;
+  --bg-code: #F4F4F8;
+
+  /* Borders & Dividers */
+  --border-subtle: rgba(0, 0, 0, 0.07);
+  --border-medium: rgba(0, 0, 0, 0.13);
+  --border-strong: rgba(0, 0, 0, 0.22);
+  --border-focus: rgba(79, 70, 229, 0.6);
+
+  /* Typography Colors */
+  --text-main: #111218;
+  --text-secondary: #4B4C5C;
+  --text-muted: #828394;
+  --text-inverse: #FFFFFF;
+
+  /* Brand & Accents */
+  --brand-primary: #4F46E5;
+  --brand-primary-hover: #4338CA;
+  --brand-cyan: #0891B2;
+  --brand-violet: #7C3AED;
+  --accent-btn-bg: #111218;
+  --accent-btn-color: #FFFFFF;
+
+  /* Status Colors */
+  --status-success: #059669;
+  --status-success-bg: rgba(5, 150, 105, 0.10);
+  --status-warning: #D97706;
+  --status-warning-bg: rgba(217, 119, 6, 0.10);
+  --status-danger: #DC2626;
+  --status-danger-bg: rgba(220, 38, 38, 0.10);
+  --status-info: #2563EB;
+  --status-info-bg: rgba(37, 99, 235, 0.10);
+
+  /* Shadows & Glows */
+  --shadow-subtle: 0 2px 8px rgba(0, 0, 0, 0.05);
+  --shadow-dropdown: 0 10px 30px rgba(0, 0, 0, 0.12), 0 0 0 1px var(--border-medium);
+  --composer-shadow: 0 16px 36px rgba(0, 0, 0, 0.08), 0 0 0 1px var(--border-subtle);
+
+  /* Ambient 3D canvas tuning */
+  --ambient-glow-1: rgba(8, 145, 178, 0.09);
+  --ambient-glow-2: rgba(79, 70, 229, 0.09);
+  --wireframe-stroke: rgba(67, 56, 202, 0.24);
+  --node-color: rgba(30, 58, 138, 0.45);
+  --filament-color: rgba(67, 56, 202, 0.10);
+}

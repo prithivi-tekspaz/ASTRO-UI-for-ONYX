@@ -1,0 +1,213 @@
+---
+// src/layouts/AppLayout.astro
+import '../styles/tokens.css';
+import '../styles/layout.css';
+import '../styles/chat.css';
+import '../styles/components.css';
+import '../styles/motion.css';
+
+import AppHeader from '../components/app/AppHeader.astro';
+import AppSidebar from '../components/app/AppSidebar.astro';
+import AmbientBackground from '../components/effects/AmbientBackground.astro';
+
+interface Props {
+  title?: string;
+  activeRoute?: string;
+  pageTitle?: string;
+  pageSubtitle?: string;
+}
+
+const { 
+  title = 'Onyx Knowledge Workspace', 
+  activeRoute = 'chat',
+  pageTitle,
+  pageSubtitle
+} = Astro.props;
+---
+
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>{title}</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <script is:inline>
+    // Immediate anti-flash theme initialization
+    (function() {
+      const savedTheme = localStorage.getItem('onyx_theme');
+      if (savedTheme === 'light' || savedTheme === 'dark') {
+        document.documentElement.setAttribute('data-theme', savedTheme);
+      } else {
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        document.documentElement.setAttribute('data-theme', prefersDark ? 'dark' : 'light');
+      }
+    })();
+  </script>
+</head>
+<body>
+  <div class="app-shell" id="appShell">
+    <!-- Non-interactive Layered 3D Ambient Background -->
+    <AmbientBackground />
+
+    <!-- Top Header -->
+    <AppHeader 
+      currentRoute={activeRoute} 
+      pageTitle={pageTitle} 
+      pageSubtitle={pageSubtitle} 
+    />
+
+    <!-- Main Workspace Container -->
+    <div class="app-main">
+      <!-- Collapsible Sidebar -->
+      <AppSidebar activeRoute={activeRoute} />
+
+      <!-- Page Workspace Content Slot -->
+      <main class="page-workspace">
+        <slot />
+      </main>
+    </div>
+  </div>
+
+  <!-- Global Application Shell Behavior -->
+  <script is:inline>
+    (function initAppShell() {
+      const sidebar = document.getElementById('appSidebar');
+      const toggleBtn = document.getElementById('sidebarToggleBtn');
+      const backdrop = document.getElementById('sidebarBackdrop');
+      const themeBtn = document.getElementById('themeToggleBtn');
+      const convList = document.getElementById('sidebarConvList');
+      const headerTitle = document.getElementById('activeConvHeaderTitle');
+
+      // 1. Sidebar Toggle & Persistence
+      function toggleSidebar() {
+        if (!sidebar) return;
+        const isCollapsed = sidebar.classList.toggle('collapsed');
+        localStorage.setItem('onyx_sidebar_collapsed', isCollapsed ? 'true' : 'false');
+        if (window.innerWidth <= 899 && backdrop) {
+          backdrop.classList.toggle('active', !isCollapsed);
+        }
+      }
+
+      if (toggleBtn) toggleBtn.addEventListener('click', toggleSidebar);
+      if (backdrop) {
+        backdrop.addEventListener('click', () => {
+          if (sidebar) sidebar.classList.add('collapsed');
+          backdrop.classList.remove('active');
+        });
+      }
+
+      // Restore desktop sidebar collapsed preference
+      if (localStorage.getItem('onyx_sidebar_collapsed') === 'true' && window.innerWidth > 899) {
+        if (sidebar) sidebar.classList.add('collapsed');
+      }
+
+      // 2. Theme Switching
+      if (themeBtn) {
+        themeBtn.addEventListener('click', () => {
+          const current = document.documentElement.getAttribute('data-theme') || 'dark';
+          const next = current === 'dark' ? 'light' : 'dark';
+          document.documentElement.setAttribute('data-theme', next);
+          localStorage.setItem('onyx_theme', next);
+        });
+      }
+
+      // 3. Centralized Conversation Fetching for Sidebar
+      window.refreshSidebarConversations = async function() {
+        if (!convList) return;
+        const activeId = localStorage.getItem('onyx_session_id') || '';
+
+        try {
+          const res = await fetch('/api/conversations');
+          if (!res.ok) throw new Error('Failed to load conversations');
+          const convs = await res.json();
+          convList.innerHTML = '';
+
+          if (!convs || convs.length === 0) {
+            convList.innerHTML = '<div style="color:var(--text-muted);font-size:12px;padding:8px 6px;">No conversations yet.</div>';
+            return;
+          }
+
+          convs.forEach(c => {
+            const isActive = c.id === activeId;
+            if (isActive && headerTitle) {
+              headerTitle.innerText = c.title || c.id;
+            }
+
+            const item = document.createElement('div');
+            item.className = `session-item ${isActive ? 'active' : ''}`;
+            item.innerHTML = `
+              <div class="session-left">
+                <span class="session-icon">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                  </svg>
+                </span>
+                <span class="session-title" title="${escapeHtml(c.title || c.id)}">${escapeHtml(c.title || c.id)}</span>
+              </div>
+              <button class="btn-delete-session" title="Delete chat" aria-label="Delete chat" onclick="event.stopPropagation(); window.deleteSidebarConversation('${c.id}', '${escapeHtml(c.title || c.id)}')">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="3 6 5 6 21 6"></polyline>
+                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                </svg>
+              </button>
+            `;
+
+            item.onclick = (e) => {
+              if (e.target.closest('.btn-delete-session')) return;
+              if (window.location.pathname !== '/') {
+                localStorage.setItem('onyx_session_id', c.id);
+                window.location.href = '/';
+              } else if (window.switchChatSession) {
+                window.switchChatSession(c.id);
+              }
+            };
+
+            convList.appendChild(item);
+          });
+        } catch (err) {
+          convList.innerHTML = '<div style="color:var(--text-muted);font-size:12px;padding:8px 6px;">History offline</div>';
+        }
+      };
+
+      // 4. Delete handler
+      window.deleteSidebarConversation = async function(convId, title) {
+        if (!confirm(`Are you sure you want to delete "${title}"?`)) return;
+        try {
+          const res = await fetch('/api/conversations/delete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ conversation_id: convId })
+          });
+          if (res.ok) {
+            const currentActive = localStorage.getItem('onyx_session_id');
+            if (currentActive === convId) {
+              if (window.startNewChat) {
+                window.startNewChat();
+              } else {
+                localStorage.removeItem('onyx_session_id');
+                window.location.href = '/';
+              }
+            } else {
+              window.refreshSidebarConversations();
+            }
+          }
+        } catch (e) {
+          alert('Failed to delete conversation: ' + e.message);
+        }
+      };
+
+      function escapeHtml(str) {
+        return (str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      }
+
+      // Initial sidebar load
+      window.refreshSidebarConversations();
+    })();
+  </script>
+</body>
+</html>
