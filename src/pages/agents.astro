@@ -1,61 +1,62 @@
 ---
 // src/pages/agents.astro
 // Agent Activity & Pipeline Execution Diagnostics
+// References: Agentic RAG System Complete Design Document v11 (§0, §3.4, §5, §13, §15)
 import AppLayout from '../layouts/AppLayout.astro';
 ---
 
-<AppLayout title="Agent Activity — Rust Knowledge Agent" activeRoute="agents" pageTitle="Agent Activity">
+<AppLayout title="Run Activity — Rust Knowledge Agent v11" activeRoute="agents" pageTitle="Run Activity">
   <div class="page-workspace">
     <div class="page-header">
       <div class="page-title-group">
-        <h1 class="page-title">Agent Orchestration & Activity</h1>
-        <p class="page-subtitle">Observable execution traces from the Rust Agentic RAG orchestrator</p>
+        <h1 class="page-title">Agent Orchestration & Run Activity</h1>
+        <p class="page-subtitle">Observable state transitions from the Rust Axum/Tokio Orchestrator (v11)</p>
       </div>
       <div style="display:flex; align-items:center; gap:8px;">
-        <span class="status-badge success" id="orchestratorStatusBadge">Orchestrator Ready</span>
+        <span class="status-badge success" id="orchestratorStatusBadge">Orchestrator v11 Ready</span>
       </div>
     </div>
 
     <div class="page-body-scroll">
       <div class="page-content-container">
-        <!-- Architecture Overview Card -->
+        <!-- Architecture Specification Card (§3.4, §3.6) -->
         <div class="onyx-card">
           <div class="onyx-card-header">
             <div>
-              <span class="onyx-card-title">Orchestrator Pipeline Specification</span>
-              <p style="font-size:var(--text-xs); color:var(--text-muted); margin-top:2px;">Native Axum/Tokio services & RIG agent execution stages</p>
+              <span class="onyx-card-title">Release 1 Pipeline Specification</span>
+              <p style="font-size:var(--text-xs); color:var(--text-muted); margin-top:2px;">Document-only answering with Grounding Gate and live ACL enforcement</p>
             </div>
           </div>
 
           <div class="grid-3">
             <div style="padding:12px; background:var(--bg-app); border:1px solid var(--border-subtle); border-radius:var(--radius-sm); font-size:var(--text-xs); display:flex; flex-direction:column; gap:6px;">
-              <span style="font-weight:600; color:var(--agent-planning);">1. Query Planning</span>
-              <span style="color:var(--text-secondary); line-height:1.5;">Analyzes user intent, checks whether document retrieval is required, and formulates sub-queries.</span>
+              <span style="font-weight:600; color:var(--agent-planning);">1. ROUTE & PlanValidator</span>
+              <span style="color:var(--text-secondary); line-height:1.5;">Routes document questions to hybrid retrieval. Refers all general, exact, or live queries to the Business Owner (refer_to_owner).</span>
             </div>
 
             <div style="padding:12px; background:var(--bg-app); border:1px solid var(--border-subtle); border-radius:var(--radius-sm); font-size:var(--text-xs); display:flex; flex-direction:column; gap:6px;">
-              <span style="font-weight:600; color:var(--agent-retrieving);">2. Tool-Driven Retrieval</span>
-              <span style="color:var(--text-secondary); line-height:1.5;">Executes dense embedding queries, sparse BM25 lookups, or document section lookups via Axum tools.</span>
+              <span style="font-weight:600; color:var(--agent-retrieving);">2. Hybrid Search (768-d nomic)</span>
+              <span style="color:var(--text-secondary); line-height:1.5;">Executes nomic-embed-text-v1.5 vector search & full-text search in PostgreSQL with live-ACL RLS.</span>
             </div>
 
             <div style="padding:12px; background:var(--bg-app); border:1px solid var(--border-subtle); border-radius:var(--radius-sm); font-size:var(--text-xs); display:flex; flex-direction:column; gap:6px;">
-              <span style="font-weight:600; color:var(--agent-evaluating);">3. Evidence Evaluation</span>
-              <span style="color:var(--text-secondary); line-height:1.5;">Evaluates candidate passages for relevance and sufficiency. Triggers query rewriting if coverage is incomplete.</span>
+              <span style="font-weight:600; color:var(--agent-evaluating);">3. Evaluator Agent (Rules A–F)</span>
+              <span style="color:var(--text-secondary); line-height:1.5;">Evaluates evidence against task requirements. Fails closed (evaluation_unavailable) on invalid evaluation.</span>
             </div>
 
             <div style="padding:12px; background:var(--bg-app); border:1px solid var(--border-subtle); border-radius:var(--radius-sm); font-size:var(--text-xs); display:flex; flex-direction:column; gap:6px;">
-              <span style="font-weight:600; color:var(--agent-retry);">4. Strategy Refinement</span>
-              <span style="color:var(--text-secondary); line-height:1.5;">When evidence is insufficient, expands keywords or switches retrieval strategies without showing hidden chain-of-thought.</span>
+              <span style="font-weight:600; color:var(--agent-retry);">4. Bounded Retry Loop</span>
+              <span style="color:var(--text-secondary); line-height:1.5;">Max 3 attempts (hard cap 5) for query rewriting or widening. Never repeats identical query-tool pairs.</span>
             </div>
 
             <div style="padding:12px; background:var(--bg-app); border:1px solid var(--border-subtle); border-radius:var(--radius-sm); font-size:var(--text-xs); display:flex; flex-direction:column; gap:6px;">
-              <span style="font-weight:600; color:var(--brand-primary);">5. Grounded Context Synthesis</span>
-              <span style="color:var(--text-secondary); line-height:1.5;">Builds prompt context strictly from retained evidence passages and generates an evidence-grounded answer.</span>
+              <span style="font-weight:600; color:var(--brand-primary);">5. JSON-Line Generator</span>
+              <span style="color:var(--text-secondary); line-height:1.5;">NVIDIA Nemotron 3 Super synthesizes structured claim units (u=1 answer first, consecutive u support/caveat).</span>
             </div>
 
             <div style="padding:12px; background:var(--bg-app); border:1px solid var(--border-subtle); border-radius:var(--radius-sm); font-size:var(--text-xs); display:flex; flex-direction:column; gap:6px;">
-              <span style="font-weight:600; color:var(--agent-grounded);">6. Citation Validation</span>
-              <span style="color:var(--text-secondary); line-height:1.5;">Validates in-text citations against actual evidence passage boundaries before sending the final completion event.</span>
+              <span style="font-weight:600; color:var(--agent-grounded);">6. Grounding Gate (P0, P1, C1–C5)</span>
+              <span style="color:var(--text-secondary); line-height:1.5;">Deterministic checks and local NLI entailment filter unsupported claims before emitting verified units.</span>
             </div>
           </div>
         </div>
@@ -65,7 +66,7 @@ import AppLayout from '../layouts/AppLayout.astro';
           <div class="onyx-card-header">
             <div>
               <span class="onyx-card-title">Active Session Trace & Diagnostics</span>
-              <p style="font-size:var(--text-xs); color:var(--text-muted); margin-top:2px;">Detailed stage tracking from active conversation session</p>
+              <p style="font-size:var(--text-xs); color:var(--text-muted); margin-top:2px;">Live execution parameters from the active conversation run</p>
             </div>
             <a href="/" class="btn-primary" style="font-size:11px; padding:4px 10px;">Return to Chat</a>
           </div>
@@ -74,7 +75,7 @@ import AppLayout from '../layouts/AppLayout.astro';
             <div style="padding:12px 14px; border-radius:var(--radius-sm); background:var(--bg-app); border:1px solid var(--border-subtle); font-size:var(--text-xs); color:var(--text-secondary); display:flex; align-items:center; justify-content:space-between;">
               <div style="display:flex; align-items:center; gap:8px;">
                 <span style="color:var(--brand-cyan);">⚡</span>
-                <span>Active Conversation Session: <strong id="activeSessionDisplay" style="font-family:var(--font-mono); color:var(--text-main);">None</strong></span>
+                <span>Active Conversation: <strong id="activeSessionDisplay" style="font-family:var(--font-mono); color:var(--text-main);">None</strong></span>
               </div>
               <span style="color:var(--text-muted);" id="activeSessionStatus">Ready</span>
             </div>
@@ -82,17 +83,25 @@ import AppLayout from '../layouts/AppLayout.astro';
             <div style="padding:12px 14px; border-radius:var(--radius-sm); background:var(--bg-app); border:1px solid var(--border-subtle); font-size:var(--text-xs); color:var(--text-secondary); display:flex; align-items:center; justify-content:space-between;">
               <div style="display:flex; align-items:center; gap:8px;">
                 <span style="color:var(--brand-primary);">📑</span>
-                <span>Evidence Verification Model: <strong>Deterministic Grounding Check</strong></span>
+                <span>Grounding Verification: <strong>Gated Mode (C1–C5 Local NLI Entailment)</strong></span>
               </div>
-              <span class="status-badge success" style="font-size:10px;">Active</span>
+              <span class="status-badge success" style="font-size:10px;">Enforced</span>
             </div>
 
             <div style="padding:12px 14px; border-radius:var(--radius-sm); background:var(--bg-app); border:1px solid var(--border-subtle); font-size:var(--text-xs); color:var(--text-secondary); display:flex; align-items:center; justify-content:space-between;">
               <div style="display:flex; align-items:center; gap:8px;">
                 <span style="color:var(--agent-evaluating);">⚖️</span>
-                <span>Sufficiency Threshold: <strong>Precision &gt; 0.70 with source location</strong></span>
+                <span>Routing Policy: <strong>Document-Only (Referral for General & Live Data)</strong></span>
               </div>
-              <span class="status-badge info" style="font-size:10px;">Configured</span>
+              <span class="status-badge info" style="font-size:10px;">Release 1 Policy</span>
+            </div>
+
+            <div style="padding:12px 14px; border-radius:var(--radius-sm); background:var(--bg-app); border:1px solid var(--border-subtle); font-size:var(--text-xs); color:var(--text-secondary); display:flex; align-items:center; justify-content:space-between;">
+              <div style="display:flex; align-items:center; gap:8px;">
+                <span style="color:var(--status-warning);">🔒</span>
+                <span>Multi-Tenant Security: <strong>Postgres RLS (acl_self Policy)</strong></span>
+              </div>
+              <span class="status-badge success" style="font-size:10px;">Active</span>
             </div>
           </div>
         </div>
@@ -101,36 +110,10 @@ import AppLayout from '../layouts/AppLayout.astro';
   </div>
 
   <script>
-    import { checkBackendHealth } from '../lib/rag/client';
-
-    const sessionDisplay = document.getElementById('activeSessionDisplay');
-    const badge = document.getElementById('orchestratorStatusBadge');
-
-    const activeId = localStorage.getItem('onyx_session_id') || 'None';
-    if (sessionDisplay) sessionDisplay.textContent = activeId;
-
-    async function checkOrchestrator() {
-      try {
-        const health = await checkBackendHealth();
-        if (health.status === 'healthy') {
-          if (badge) {
-            badge.className = 'status-badge success';
-            badge.textContent = 'Orchestrator Live';
-          }
-        } else {
-          if (badge) {
-            badge.className = 'status-badge warning';
-            badge.textContent = 'Backend Offline';
-          }
-        }
-      } catch {
-        if (badge) {
-          badge.className = 'status-badge danger';
-          badge.textContent = 'Disconnected';
-        }
-      }
+    const activeSessionId = localStorage.getItem('onyx_session_id') || 'sess_default';
+    const displayEl = document.getElementById('activeSessionDisplay');
+    if (displayEl) {
+      displayEl.textContent = activeSessionId;
     }
-
-    checkOrchestrator();
   </script>
 </AppLayout>

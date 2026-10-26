@@ -1,10 +1,11 @@
 ---
 // src/pages/knowledge.astro
 // Knowledge Library & Real Document Ingestion Lifecycle
+// References: Agentic RAG System Complete Design Document v11 (§0.1 D2, §12.1, §15.1)
 import AppLayout from '../layouts/AppLayout.astro';
 ---
 
-<AppLayout title="Knowledge Management — Rust Knowledge Agent" activeRoute="knowledge" pageTitle="Knowledge">
+<AppLayout title="Knowledge Management — Rust Knowledge Agent v11" activeRoute="knowledge" pageTitle="Knowledge">
   <div class="page-workspace">
     <div class="page-header">
       <div class="page-title-group">
@@ -13,7 +14,7 @@ import AppLayout from '../layouts/AppLayout.astro';
       </div>
 
       <div style="display:flex; gap:8px;">
-        <input type="file" id="knowledgeUploadInput" multiple accept=".pdf,.txt,.md,.json,.csv" style="display:none;" />
+        <input type="file" id="knowledgeUploadInput" multiple accept=".pdf,.docx,.pptx" style="display:none;" />
         <button class="btn-primary" id="btnUploadKnowledge">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"></path>
@@ -34,13 +35,13 @@ import AppLayout from '../layouts/AppLayout.astro';
           <span id="ingestProgressSub" style="font-size:11px; color:var(--text-muted); font-family:var(--font-mono);">Uploading</span>
         </div>
 
-        <!-- Ingestion Pipeline Guide Banner -->
+        <!-- Ingestion Pipeline Guide Banner (Release 1 Scope §0.1 D2) -->
         <div style="display:flex; align-items:center; justify-content:space-between; padding:10px 14px; background:var(--bg-surface); border:1px solid var(--border-subtle); border-radius:var(--radius-md); font-size:var(--text-xs); color:var(--text-secondary);">
           <div style="display:flex; align-items:center; gap:8px;">
             <span>ℹ️</span>
-            <span><strong>Ingestion Pipeline:</strong> Upload &rarr; Text Extraction &rarr; Semantic Chunking &rarr; Embedding Generation &rarr; Index Ready for Retrieval.</span>
+            <span><strong>Release 1 Scope:</strong> Text-extractable PDF, Word (.docx), PowerPoint (.pptx). Scanned files and spreadsheets are out of scope.</span>
           </div>
-          <span style="color:var(--text-muted);">PDF, TXT, MD supported</span>
+          <span style="color:var(--brand-cyan); font-weight:600;">English Only</span>
         </div>
 
         <!-- Ingested Document Catalog (Real Backend Data) -->
@@ -48,13 +49,13 @@ import AppLayout from '../layouts/AppLayout.astro';
           <div class="onyx-card-header">
             <div>
               <span class="onyx-card-title">Indexed Knowledge Catalog (<span id="totalDocCount">0</span>)</span>
-              <p style="font-size:var(--text-xs); color:var(--text-muted); margin-top:2px;">Documents stored in Rust vector backend for orchestrator retrieval</p>
+              <p style="font-size:var(--text-xs); color:var(--text-muted); margin-top:2px;">Documents stored in PostgreSQL pgvector vault for orchestrator retrieval</p>
             </div>
             <button class="btn-secondary" id="btnRefreshCatalog" style="padding:4px 10px; font-size:11px;">Refresh</button>
           </div>
 
           <div id="knowledgeDocList" style="display:flex; flex-direction:column; gap:8px;">
-            <div style="color:var(--text-muted);font-size:13px;padding:8px 0;">Loading document catalog...</div>
+            <div style="color:var(--text-muted);font-size:13px;padding:8px 0;">Loading document catalog from backend...</div>
           </div>
         </div>
       </div>
@@ -86,7 +87,7 @@ import AppLayout from '../layouts/AppLayout.astro';
             <div style="text-align:center; padding:32px 16px; color:var(--text-muted);">
               <div style="font-size:24px; margin-bottom:8px;">📄</div>
               <div style="font-size:13px; font-weight:600; color:var(--text-secondary); margin-bottom:4px;">No documents in catalog yet</div>
-              <p style="font-size:12px;">Click <strong>Upload Documents</strong> above to ingest knowledge files into the Rust vector backend.</p>
+              <p style="font-size:12px;">Click <strong>Upload Documents</strong> above to ingest permitted internal documents (.pdf, .docx, .pptx).</p>
             </div>
           `;
           return;
@@ -97,77 +98,107 @@ import AppLayout from '../layouts/AppLayout.astro';
           card.className = 'doc-card';
           
           let statusBadgeClass = 'info';
-          let statusLabel = doc.status || 'Ready';
-          if (doc.status === 'ready' || doc.status === 'indexing') {
-            statusBadgeClass = doc.status === 'ready' ? 'success' : 'warning';
-          } else if (doc.status === 'failed') {
-            statusBadgeClass = 'danger';
-          }
+          let statusLabel = doc.state || 'Ready';
+          if (doc.state === 'ready') statusBadgeClass = 'success';
+          else if (doc.state === 'failed') statusBadgeClass = 'danger';
+          else if (doc.state === 'processing') statusBadgeClass = 'warning';
 
           card.innerHTML = `
             <div class="doc-card-left">
-              <span class="doc-ext-badge">${escapeHtml(doc.fileFormat.toUpperCase())}</span>
-              <div class="doc-card-info">
-                <span class="doc-card-title" title="${escapeHtml(doc.filename)}">${escapeHtml(doc.filename)}</span>
-                <span class="doc-card-meta">${doc.totalChunks ? `${doc.totalChunks} chunks` : 'Indexed'} &bull; ${new Date(doc.uploadedAt).toLocaleDateString()}</span>
+              <div class="doc-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                  <polyline points="14 2 14 8 20 8"></polyline>
+                </svg>
+              </div>
+              <div class="doc-info">
+                <div class="doc-title">${escapeHtml(doc.title || doc.filename)}</div>
+                <div class="doc-meta">
+                  <span>${doc.fileFormat.toUpperCase()}</span>
+                  <span>•</span>
+                  <span>${doc.totalChunks ? `${doc.totalChunks} chunks` : 'Chunking'}</span>
+                  <span>•</span>
+                  <span>${doc.sizeBytes ? `${(doc.sizeBytes / 1024).toFixed(1)} KB` : 'Stored'}</span>
+                  <span>•</span>
+                  <span>Uploaded ${new Date(doc.uploadedAt).toLocaleDateString()}</span>
+                </div>
               </div>
             </div>
-            <div style="display:flex;align-items:center;gap:12px;">
-              <span class="status-badge ${statusBadgeClass}">${escapeHtml(statusLabel)}</span>
-              <button class="btn-secondary" style="padding:4px 8px;font-size:12px;color:var(--status-danger);" onclick="window.handleDeleteDoc('${doc.id}', '${escapeHtml(doc.filename.replace(/'/g, ''))}')">Delete</button>
+            <div class="doc-card-actions">
+              <span class="status-badge ${statusBadgeClass}" style="font-size:10px;text-transform:capitalize;">${escapeHtml(statusLabel)}</span>
+              <button class="btn-danger-outline" style="font-size:11px;padding:3px 8px;" onclick="window.confirmDeleteDoc('${escapeHtml(doc.id)}', '${escapeHtml(doc.filename)}')">Delete</button>
             </div>
           `;
           docListEl.appendChild(card);
         });
-      } catch (err: any) {
-        docListEl.innerHTML = `<div style="color:var(--status-danger);font-size:13px;padding:8px 0;">Failed to load documents: ${escapeHtml(err.message)}</div>`;
+      } catch (err) {
+        docListEl.innerHTML = `
+          <div style="color:var(--status-danger);font-size:12px;padding:12px 0;">
+            Could not fetch document catalog from backend: ${escapeHtml((err as any).message || 'Server offline')}
+          </div>
+        `;
       }
     }
 
-    // 2. Document Deletion Handler
-    (window as any).handleDeleteDoc = async function(docId: string, filename: string) {
-      if (!confirm(`Permanently remove "${filename}" and its vector chunks from the knowledge base?`)) return;
-      try {
-        await removeDocument(docId);
-        await loadDocs();
-      } catch (err: any) {
-        alert('Failed to remove document: ' + err.message);
-      }
-    };
-
-    // 3. Document Upload Routine
+    // 2. Upload Document Handling with Validation (§0.1 D2)
     uploadBtn.addEventListener('click', () => uploadInput.click());
-    refreshBtn.addEventListener('click', () => loadDocs());
-
     uploadInput.addEventListener('change', async (e) => {
       const target = e.target as HTMLInputElement;
       if (!target.files || target.files.length === 0) return;
 
       const files = Array.from(target.files);
+      const supportedExtensions = ['pdf', 'docx', 'pptx'];
+      const unsupported = files.filter(f => !supportedExtensions.includes(f.name.split('.').pop()?.toLowerCase() || ''));
+
+      if (unsupported.length > 0) {
+        alert(`Unsupported file format(s): ${unsupported.map(f => f.name).join(', ')}.\nRelease 1 supports text-extractable PDF, Word (.docx), and PowerPoint (.pptx) only.`);
+        uploadInput.value = '';
+        return;
+      }
+
       progressBanner.style.display = 'flex';
-      progressText.innerText = `Ingesting ${files.length} document(s)...`;
-      progressSub.innerText = 'Extracting & Chunking';
+      progressText.innerText = `Uploading and parsing ${files.length} document(s)...`;
+      progressSub.innerText = 'Extracting & Embedding';
 
       try {
         await uploadDocuments(files);
-        progressText.innerText = `Successfully uploaded ${files.length} file(s). Vector indexing completed.`;
-        progressSub.innerText = 'Ready';
-        await loadDocs();
+        progressText.innerText = `Ingestion job started. Document version will publish atomically when ready.`;
+        progressSub.innerText = 'Published';
         setTimeout(() => {
           progressBanner.style.display = 'none';
-        }, 3500);
+          loadDocs();
+        }, 3000);
       } catch (err: any) {
-        progressText.innerText = 'Upload failed: ' + err.message;
+        progressBanner.style.background = 'rgba(239, 68, 68, 0.12)';
+        progressBanner.style.borderColor = 'rgba(239, 68, 68, 0.3)';
+        progressText.innerText = `Upload failed: ${err.message}`;
         progressSub.innerText = 'Failed';
         setTimeout(() => {
           progressBanner.style.display = 'none';
-        }, 4000);
-      } finally {
-        uploadInput.value = '';
+          progressBanner.style.background = 'rgba(99,102,241,0.12)';
+          progressBanner.style.borderColor = 'var(--border-medium)';
+        }, 5000);
       }
+
+      uploadInput.value = '';
     });
 
-    // Startup
+    // 3. Confirm & Remove Document
+    (window as any).confirmDeleteDoc = async function(id: string, name: string) {
+      if (!confirm(`Are you sure you want to delete "${name}"? This will permanently remove its embeddings and chunks from the knowledge vault.`)) {
+        return;
+      }
+      try {
+        await removeDocument(id);
+        loadDocs();
+      } catch (err: any) {
+        alert(`Deletion failed: ${err.message}`);
+      }
+    };
+
+    refreshBtn.addEventListener('click', loadDocs);
+
+    // Initial Load
     loadDocs();
   </script>
 </AppLayout>

@@ -3,24 +3,24 @@
 // Welcoming empty state tailored to evidence-driven knowledge retrieval
 const promptCards = [
   {
-    title: 'Summarize a document',
-    desc: 'Explain the key ideas and cite the relevant sections.',
-    prompt: 'Summarize the core technical architecture and cite all relevant sections from the documents.'
+    title: 'Summarize an uploaded policy',
+    desc: 'Extract key principles and cite verifiable sections.',
+    prompt: 'Summarize the uploaded policy and cite all relevant sections from the documents.'
   },
   {
-    title: 'Compare multiple sources',
-    desc: 'Identify agreements, contradictions, and differences.',
-    prompt: 'Compare the retrieval strategies and citation methods across our sources, highlighting any contradictions.'
+    title: 'Compare two document versions',
+    desc: 'Identify changes, exceptions, and version differences.',
+    prompt: 'Compare the policy requirements between the document versions, highlighting any exceptions or rule changes.'
   },
   {
-    title: 'Investigate a technical question',
-    desc: 'Retrieve supporting evidence and identify missing information.',
-    prompt: 'Retrieve supporting evidence for the multi-step reasoning mechanism and identify any missing information.'
+    title: 'Find a specific requirement',
+    desc: 'Retrieve exact conditions, constraints, and clauses.',
+    prompt: 'Find the specific requirements and constraints regarding technical compliance in the approved documents.'
   },
   {
-    title: 'Extract structured information',
-    desc: 'Organize documented specifications into a clear table.',
-    prompt: 'Extract all documented performance specifications and API schemas into a clean, structured table.'
+    title: 'Extract key facts from a document',
+    desc: 'Structure documented facts with traceable evidence.',
+    prompt: 'Extract all documented specifications and verification rules into a structured, cited summary.'
   }
 ];
 ---
@@ -28,13 +28,16 @@ const promptCards = [
 <div class="chat-empty-state" id="chatEmptyState">
   <div class="empty-state-badge">
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-      <circle cx="11" cy="11" r="8"></circle>
-      <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+      <polyline points="14 2 14 8 20 8"></polyline>
+      <line x1="16" y1="13" x2="8" y2="13"></line>
+      <line x1="16" y1="17" x2="8" y2="17"></line>
+      <polyline points="10 9 9 9 8 9"></polyline>
     </svg>
   </div>
-  <h1 class="empty-state-title">Ask. Investigate. Verify.</h1>
+  <h1 class="empty-state-title">Ask your documents. Examine the evidence.</h1>
   <p class="empty-state-desc">
-    Search your knowledge base, compare evidence across sources, and get answers with traceable citations.
+    Get answers from approved internal documents, inspect the supporting sources, and see when more information is needed.
   </p>
 
   <div class="empty-prompt-grid">

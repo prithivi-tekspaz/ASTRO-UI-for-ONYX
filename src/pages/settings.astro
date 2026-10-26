@@ -1,15 +1,16 @@
 ---
 // src/pages/settings.astro
 // Agentic RAG Workspace Settings & Axum Backend Diagnostics
+// References: Agentic RAG System Complete Design Document v11 (§0, §15, §16, §21)
 import AppLayout from '../layouts/AppLayout.astro';
 ---
 
-<AppLayout title="Settings — Rust Knowledge Agent" activeRoute="settings" pageTitle="Settings">
+<AppLayout title="Settings — Rust Knowledge Agent v11" activeRoute="settings" pageTitle="Settings">
   <div class="page-workspace">
     <div class="page-header">
       <div class="page-title-group">
         <h1 class="page-title">Workspace Settings</h1>
-        <p class="page-subtitle">Personal display modes, Axum/Tokio backend connection status, and retrieval diagnostics</p>
+        <p class="page-subtitle">Personal display modes, Axum/Tokio backend connection status, and service readiness</p>
       </div>
 
       <button class="btn-primary" id="btnTestConnection" style="font-size:12px; padding:6px 14px;">
@@ -20,12 +21,12 @@ import AppLayout from '../layouts/AppLayout.astro';
 
     <div class="page-body-scroll">
       <div class="page-content-container">
-        <!-- Section 1: Backend Connection & Diagnostics -->
+        <!-- Section 1: Backend Connection & Diagnostics (§15.1, §28.2) -->
         <div class="onyx-card">
           <div class="onyx-card-header">
             <div>
               <span class="onyx-card-title">Rust Backend Connection Status</span>
-              <p style="font-size:var(--text-xs); color:var(--text-muted); margin-top:2px;">Live health & readiness probes from Axum upstream server</p>
+              <p style="font-size:var(--text-xs); color:var(--text-muted); margin-top:2px;">Live health & readiness probes (/health, /ready)</p>
             </div>
             <span class="status-badge warning" id="backendStatusBadge">Checking...</span>
           </div>
@@ -38,17 +39,22 @@ import AppLayout from '../layouts/AppLayout.astro';
 
             <div style="display:flex; justify-content:space-between; padding:10px 14px; background:var(--bg-app); border:1px solid var(--border-subtle); border-radius:var(--radius-sm);">
               <span style="color:var(--text-muted);">Service Framework:</span>
-              <span style="font-family:var(--font-mono); font-weight:600; color:var(--brand-cyan);">Axum + Tokio (Native Rust)</span>
+              <span style="font-family:var(--font-mono); font-weight:600; color:var(--brand-cyan);">Axum + Tokio (Modular Monolith, Rust 1.99.1)</span>
             </div>
 
             <div style="display:flex; justify-content:space-between; padding:10px 14px; background:var(--bg-app); border:1px solid var(--border-subtle); border-radius:var(--radius-sm);">
-              <span style="color:var(--text-muted);">Model / Agent Framework:</span>
-              <span style="font-family:var(--font-mono); font-weight:600;" id="agentFrameworkText">RIG / Native Rust Agent</span>
+              <span style="color:var(--text-muted);">Models (v11 §0.1 D5):</span>
+              <span style="font-family:var(--font-mono); font-weight:600; text-align:right;" id="modelsSpecText">nomic-embed-text-v1.5 (768-d) & Nemotron 3 Super</span>
             </div>
 
             <div style="display:flex; justify-content:space-between; padding:10px 14px; background:var(--bg-app); border:1px solid var(--border-subtle); border-radius:var(--radius-sm);">
-              <span style="color:var(--text-muted);">Supported Retrieval Strategies:</span>
-              <span style="font-family:var(--font-mono); font-weight:600; color:var(--text-main);">Hybrid, Semantic Dense, BM25 Keyword</span>
+              <span style="color:var(--text-muted);">Supported Formats (Release 1 §0.1 D2):</span>
+              <span style="font-family:var(--font-mono); font-weight:600; color:var(--text-main);">PDF, Word (.docx), PowerPoint (.pptx)</span>
+            </div>
+
+            <div style="display:flex; justify-content:space-between; padding:10px 14px; background:var(--bg-app); border:1px solid var(--border-subtle); border-radius:var(--radius-sm);">
+              <span style="color:var(--text-muted);">Vector Store & Security:</span>
+              <span style="font-family:var(--font-mono); font-weight:600; color:var(--brand-primary);">PostgreSQL + pgvector HNSW (Live-ACL RLS)</span>
             </div>
 
             <div id="connectionDiagnosticMsg" style="display:none; padding:8px 12px; border-radius:var(--radius-sm); font-size:12px;"></div>
@@ -98,65 +104,66 @@ import AppLayout from '../layouts/AppLayout.astro';
     const testBtn = document.getElementById('btnTestConnection')!;
     const statusBadge = document.getElementById('backendStatusBadge')!;
     const diagMsg = document.getElementById('connectionDiagnosticMsg')!;
-    const darkBtn = document.getElementById('btnSetThemeDark')!;
-    const lightBtn = document.getElementById('btnSetThemeLight')!;
-    const canvasToggle = document.getElementById('chkAmbientCanvas') as HTMLInputElement;
+    const btnDark = document.getElementById('btnSetThemeDark')!;
+    const btnLight = document.getElementById('btnSetThemeLight')!;
+    const chkAmbient = document.getElementById('chkAmbientCanvas') as HTMLInputElement;
 
-    async function runHealthCheck() {
+    async function runDiagnostics() {
       statusBadge.className = 'status-badge warning';
-      statusBadge.textContent = 'Probing...';
+      statusBadge.innerText = 'Probing...';
       diagMsg.style.display = 'none';
 
       try {
-        const res = await checkBackendHealth();
-        if (res.status === 'healthy') {
+        const health = await checkBackendHealth();
+        if (health.status === 'healthy' || health.status === 'ready') {
           statusBadge.className = 'status-badge success';
-          statusBadge.textContent = 'Connected (Healthy)';
+          statusBadge.innerText = 'Connected & Ready';
+          diagMsg.className = 'evidence-sufficiency-banner sufficient';
           diagMsg.style.display = 'block';
-          diagMsg.style.backgroundColor = 'var(--status-success-bg)';
-          diagMsg.style.border = '1px solid rgba(16, 185, 129, 0.3)';
-          diagMsg.style.color = 'var(--status-success)';
-          diagMsg.textContent = `Backend online. Version: ${res.version || '1.0.0'} • Vector backend: ${res.vectorBackend || 'Native'}`;
+          diagMsg.innerHTML = `<strong>Backend Ready:</strong> Successfully connected to Rust Axum server (${health.version || 'v11'}). Models and pgvector store online.`;
         } else {
-          statusBadge.className = 'status-badge danger';
-          statusBadge.textContent = 'Backend Offline';
+          statusBadge.className = 'status-badge warning';
+          statusBadge.innerText = 'Degraded';
+          diagMsg.className = 'evidence-sufficiency-banner partial';
           diagMsg.style.display = 'block';
-          diagMsg.style.backgroundColor = 'var(--status-danger-bg)';
-          diagMsg.style.border = '1px solid rgba(239, 68, 68, 0.3)';
-          diagMsg.style.color = 'var(--status-danger)';
-          diagMsg.textContent = 'Backend server at http://127.0.0.1:8080 did not respond to /api/health probe. Ensure your native Axum service is started.';
+          diagMsg.innerHTML = `<strong>Backend Degraded:</strong> The service is reachable, but one or more subcomponents reported non-ready status.`;
         }
       } catch (err: any) {
         statusBadge.className = 'status-badge danger';
-        statusBadge.textContent = 'Unavailable';
+        statusBadge.innerText = 'Disconnected';
+        diagMsg.className = 'evidence-sufficiency-banner insufficient';
         diagMsg.style.display = 'block';
-        diagMsg.style.backgroundColor = 'var(--status-danger-bg)';
-        diagMsg.style.border = '1px solid rgba(239, 68, 68, 0.3)';
-        diagMsg.style.color = 'var(--status-danger)';
-        diagMsg.textContent = `Connection probe failed: ${err.message}.`;
+        diagMsg.innerHTML = `<strong>Connection Failed:</strong> Could not connect to upstream Rust backend at <code>http://127.0.0.1:8080</code>. Ensure the API binary is running.`;
       }
     }
 
-    testBtn.addEventListener('click', runHealthCheck);
+    testBtn.addEventListener('click', runDiagnostics);
 
-    darkBtn.addEventListener('click', () => {
+    // Theme toggles
+    btnDark.addEventListener('click', () => {
       document.documentElement.setAttribute('data-theme', 'dark');
       localStorage.setItem('onyx_theme', 'dark');
     });
 
-    lightBtn.addEventListener('click', () => {
+    btnLight.addEventListener('click', () => {
       document.documentElement.setAttribute('data-theme', 'light');
       localStorage.setItem('onyx_theme', 'light');
     });
 
-    canvasToggle.addEventListener('change', () => {
-      const canvas = document.getElementById('ambientCanvas');
-      if (canvas) {
-        canvas.style.display = canvasToggle.checked ? 'block' : 'none';
-      }
-    });
+    // Ambient background toggle
+    if (chkAmbient) {
+      chkAmbient.checked = localStorage.getItem('onyx_ambient_canvas') !== 'false';
+      chkAmbient.addEventListener('change', () => {
+        const enabled = chkAmbient.checked;
+        localStorage.setItem('onyx_ambient_canvas', String(enabled));
+        const canvas = document.getElementById('ambientCanvas');
+        if (canvas) {
+          canvas.style.display = enabled ? 'block' : 'none';
+        }
+      });
+    }
 
-    // Check health on page mount
-    runHealthCheck();
+    // Auto-probe on initial mount
+    runDiagnostics();
   </script>
 </AppLayout>

@@ -1,25 +1,20 @@
 ---
 // src/pages/search.astro
-// Dedicated Knowledge Retrieval & Strategy Selection Interface
+// Dedicated Document Retrieval & Passage Inspection Interface
+// References: Agentic RAG System Complete Design Document v11 (§12.4, §12.6, §15.1)
 import AppLayout from '../layouts/AppLayout.astro';
 ---
 
-<AppLayout title="Search — Rust Knowledge Agent" activeRoute="search" pageTitle="Search">
+<AppLayout title="Search — Rust Knowledge Agent v11" activeRoute="search" pageTitle="Search">
   <div class="page-workspace">
     <div class="page-header">
       <div class="page-title-group">
-        <h1 class="page-title">Knowledge Retrieval</h1>
-        <p class="page-subtitle">Multi-strategy candidate retrieval across indexed vector vaults and documents</p>
+        <h1 class="page-title">Document Retrieval</h1>
+        <p class="page-subtitle">Candidate passage retrieval across indexed internal documents (POST /v1/search)</p>
       </div>
 
-      <!-- Strategy Selector -->
       <div style="display:flex; align-items:center; gap:8px;">
-        <label for="retrievalStrategySelect" style="font-size:var(--text-xs); color:var(--text-muted); font-weight:600;">Strategy:</label>
-        <select id="retrievalStrategySelect" class="btn-secondary" style="padding:6px 12px; font-size:var(--text-xs); border-radius:var(--radius-sm); outline:none; background:var(--bg-surface); color:var(--text-main);">
-          <option value="hybrid" selected>Hybrid (Dense + Sparse)</option>
-          <option value="semantic">Semantic (Dense Vector)</option>
-          <option value="keyword">Keyword (Sparse BM25)</option>
-        </select>
+        <span class="status-badge info" style="font-size:11px;">Hybrid (Vector + FTS)</span>
       </div>
     </div>
 
@@ -34,7 +29,7 @@ import AppLayout from '../layouts/AppLayout.astro';
           <input 
             type="search" 
             id="searchQuery" 
-            placeholder="Search passages, code signatures, or technical documentation..." 
+            placeholder="Search passages, technical policies, or documentation clauses..." 
             autocomplete="off"
             required
           />
@@ -54,8 +49,8 @@ import AppLayout from '../layouts/AppLayout.astro';
         <!-- Initial Search Empty State -->
         <div id="searchInitialState" style="text-align: center; padding: 48px 16px; color: var(--text-muted);">
           <div style="font-size: 32px; margin-bottom: 8px;">🔍</div>
-          <h2 style="font-size: 16px; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px;">Enter a query to retrieve passages</h2>
-          <p style="font-size: 13px;">Passages retrieved here represent candidate evidence before evaluation by the RAG orchestrator.</p>
+          <h2 style="font-size: 16px; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px;">Enter a query to retrieve candidate passages</h2>
+          <p style="font-size: 13px;">Passages retrieved here represent un-evaluated candidates before Grounding Gate screening.</p>
         </div>
       </div>
     </div>
@@ -64,11 +59,9 @@ import AppLayout from '../layouts/AppLayout.astro';
   <script>
     import { searchKnowledge } from '../lib/rag/api';
     import { escapeHtml } from '../lib/onyx/markdown';
-    import type { RetrievalStrategy } from '../lib/rag/types';
 
     const form = document.getElementById('searchForm') as HTMLFormElement;
     const input = document.getElementById('searchQuery') as HTMLInputElement;
-    const strategySelect = document.getElementById('retrievalStrategySelect') as HTMLSelectElement;
     const resultsCount = document.getElementById('resultsCount')!;
     const resultsList = document.getElementById('resultsList')!;
     const initialState = document.getElementById('searchInitialState')!;
@@ -81,17 +74,15 @@ import AppLayout from '../layouts/AppLayout.astro';
 
       connectionNote.style.display = 'none';
       initialState.style.display = 'none';
-      resultsList.innerHTML = '<div style="color:var(--text-muted);font-size:13px;padding:12px 0;">Retrieving candidate passages from Rust backend...</div>';
-
-      const strategy = (strategySelect.value || 'hybrid') as RetrievalStrategy;
+      resultsList.innerHTML = '<div style="color:var(--text-muted);font-size:13px;padding:12px 0;">Retrieving candidate passages from Rust backend (/v1/search)...</div>';
 
       try {
-        const results = await searchKnowledge(query, strategy);
-        resultsCount.innerText = `${results.length} candidate passage(s) retrieved via [${strategy}]`;
+        const results = await searchKnowledge(query);
+        resultsCount.innerText = `${results.length} candidate passage(s) retrieved via Hybrid search`;
         resultsList.innerHTML = '';
 
         if (results.length === 0) {
-          resultsList.innerHTML = '<div style="color:var(--text-muted);font-size:13px;padding:12px 0;">No matching candidate passages found in knowledge base.</div>';
+          resultsList.innerHTML = '<div style="color:var(--text-muted);font-size:13px;padding:12px 0;">No matching candidate passages found in permitted documents.</div>';
           return;
         }
 
@@ -99,36 +90,34 @@ import AppLayout from '../layouts/AppLayout.astro';
           const card = document.createElement('div');
           card.className = 'onyx-card';
           card.innerHTML = `
-            <div class="onyx-card-header" style="margin-bottom:8px;">
-              <div style="display:flex;align-items:center;gap:8px;">
-                <span style="font-size:11px;font-family:var(--font-mono);color:var(--text-muted);">#${idx + 1}</span>
-                <span class="onyx-card-title">${escapeHtml(res.title)}</span>
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">
+              <div>
+                <div style="font-weight:600; font-size:14px; color:var(--text-main); display:flex; align-items:center; gap:6px;">
+                  <span>[${idx + 1}]</span>
+                  <span>📄 ${escapeHtml(res.title || 'Document Passage')}</span>
+                  ${res.sourceLocation ? `<span style="font-size:11px; color:var(--text-muted); font-weight:normal;">[${escapeHtml(res.sourceLocation)}]</span>` : ''}
+                </div>
               </div>
-              <div style="display:flex;align-items:center;gap:6px;">
-                ${res.sourceLocation ? `<span class="status-badge info" style="font-size:10px;">${escapeHtml(res.sourceLocation)}</span>` : ''}
-                <span class="status-badge" style="font-size:10px;background:rgba(255,255,255,0.06);color:var(--text-secondary);">${res.strategy || strategy}</span>
+              <div style="display:flex; align-items:center; gap:6px;">
+                <span class="status-badge info" style="font-size:10px;">Score: ${(res.score || 0.85).toFixed(3)}</span>
+                <button class="btn-secondary" style="font-size:11px; padding:3px 8px;" onclick="window.investigateInChat('${escapeHtml(query)}')">Investigate in Chat</button>
               </div>
             </div>
-            <p style="font-size:var(--text-sm);color:var(--text-secondary);line-height:1.6;margin-bottom:12px;">
+            <div style="font-size:13px; line-height:1.6; color:var(--text-secondary); background:var(--bg-app); padding:10px 12px; border-radius:var(--radius-sm); border:1px solid var(--border-subtle);">
               ${escapeHtml(res.snippet)}
-            </p>
-            <div style="display:flex;align-items:center;justify-content:space-between;font-size:var(--text-xs);color:var(--text-muted);border-top:1px solid var(--border-subtle);padding-top:10px;">
-              <span>Score: <strong style="font-family:var(--font-mono);">${res.score.toFixed(3)}</strong></span>
-              <button class="btn-secondary" style="padding:4px 10px;font-size:11px;" onclick="window.useInChat('${escapeHtml(res.title.replace(/'/g, ''))}')">Investigate in Chat &rarr;</button>
             </div>
           `;
           resultsList.appendChild(card);
         });
       } catch (err: any) {
-        resultsCount.innerText = '';
         resultsList.innerHTML = '';
         connectionNote.style.display = 'block';
-        connectionNote.innerText = `Search error: ${err.message}. Ensure the Rust backend service is running.`;
+        connectionNote.innerText = `Search request failed: ${err.message}. Ensure Axum backend is running on port 8080.`;
       }
     });
 
-    (window as any).useInChat = function(title: string) {
-      localStorage.setItem('onyx_prefill_query', `Investigate and cite evidence regarding: ${title}`);
+    (window as any).investigateInChat = function(queryText: string) {
+      sessionStorage.setItem('pending_chat_prompt', queryText);
       window.location.href = '/';
     };
   </script>

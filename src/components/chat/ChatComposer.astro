@@ -24,15 +24,15 @@
           </svg>
         </button>
 
-        <!-- Hidden Native File Picker -->
-        <input type="file" id="composerFileInput" multiple accept=".pdf,.txt,.md,.json,.csv" style="display: none;" />
+        <!-- Hidden Native File Picker (PDF, DOCX, PPTX in Release 1) -->
+        <input type="file" id="composerFileInput" multiple accept=".pdf,.docx,.pptx" style="display: none;" />
 
         <!-- Multiline Textarea Input -->
         <textarea
           id="composerQueryInput"
           class="composer-textarea"
           rows="1"
-          placeholder="Ask a technical question or investigate evidence... (Enter to send, Shift+Enter for newline)"
+          placeholder="Ask a question about internal documents... (Enter to send, Shift+Enter for newline)"
           autocomplete="off"
         ></textarea>
 
@@ -71,7 +71,7 @@
     <div id="composerUploadFeedback" style="display:none; font-size:11px; color:var(--brand-cyan); margin-top:4px; padding:0 4px;"></div>
 
     <div class="composer-disclaimer">
-      Answers are synthesized with traceable citations from verified evidence records.
+      Answers are checked against approved internal documents with traceable citations. Unsupported claims are withheld by Grounding Gate.
     </div>
   </div>
 </div>

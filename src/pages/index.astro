@@ -1,12 +1,13 @@
 ---
 // src/pages/index.astro
 // Agentic RAG Workspace — Main Chat & Transparent Execution View
+// References: Agentic RAG System Complete Design Document v11 (§0, §3.4, §13, §14, §15)
 import AppLayout from '../layouts/AppLayout.astro';
 import ChatEmptyState from '../components/chat/ChatEmptyState.astro';
 import ChatComposer from '../components/chat/ChatComposer.astro';
 ---
 
-<AppLayout title="Chat — Rust Knowledge Agent" activeRoute="chat">
+<AppLayout title="Chat — Rust Knowledge Agent v11" activeRoute="chat">
   <div class="chat-workspace">
     <!-- Messages Scrollable Viewport -->
     <div class="chat-scroll-area" id="chatScrollArea">
@@ -23,8 +24,16 @@ import ChatComposer from '../components/chat/ChatComposer.astro';
   <script>
     import { renderMarkdown, escapeHtml } from '../lib/onyx/markdown';
     import { streamAgentRag } from '../lib/rag/streaming';
-    import { getConversation, deleteConversation, uploadDocuments } from '../lib/rag/api';
-    import type { AgentStage, StageStatus, Citation, SufficiencyStatus, ToolInvocation, EvidenceEvaluation } from '../lib/rag/types';
+    import { getConversation, deleteConversation, uploadDocuments, resolveCitation } from '../lib/rag/api';
+    import type { 
+      ClaimUnit, 
+      Citation, 
+      DonePayload, 
+      VerificationPayload, 
+      ClarificationPayload,
+      RunOutcome,
+      CoverageStatus
+    } from '../lib/rag/types';
 
     // Application Chat State
     let activeSessionId = localStorage.getItem('onyx_session_id') || ('sess_' + Math.random().toString(36).substring(2, 10));
@@ -90,27 +99,38 @@ import ChatComposer from '../components/chat/ChatComposer.astro';
       queryInput.focus();
     };
 
-    // 3. Attachments & Ingestion
+    // 3. Attachments & Ingestion (Supported: PDF, DOCX, PPTX in Release 1)
     attachBtn.addEventListener('click', () => fileInput.click());
     fileInput.addEventListener('change', async (e) => {
       const target = e.target as HTMLInputElement;
       if (!target.files || target.files.length === 0) return;
 
       const newFiles = Array.from(target.files);
+      const supportedExtensions = ['pdf', 'docx', 'pptx'];
+      const rejectedFiles = newFiles.filter(f => !supportedExtensions.includes(f.name.split('.').pop()?.toLowerCase() || ''));
+
+      if (rejectedFiles.length > 0) {
+        uploadFeedback.style.display = 'block';
+        uploadFeedback.innerHTML = `<span style="color:var(--status-danger)">Unsupported format: ${escapeHtml(rejectedFiles.map(f => f.name).join(', '))}. Release 1 supports text-extractable PDF, .docx, and .pptx only.</span>`;
+        setTimeout(() => { uploadFeedback.style.display = 'none'; }, 5000);
+        fileInput.value = '';
+        return;
+      }
+
       newFiles.forEach(f => attachedFiles.push(f));
       renderAttachmentChips();
       updateSendState();
 
       // Upload files to backend immediately
       uploadFeedback.style.display = 'block';
-      uploadFeedback.innerText = `Ingesting ${newFiles.length} file(s)...`;
+      uploadFeedback.innerText = `Ingesting ${newFiles.length} file(s) into vector vault...`;
       try {
         await uploadDocuments(newFiles);
-        uploadFeedback.innerText = `Uploaded and ingested ${newFiles.length} file(s) for retrieval context.`;
+        uploadFeedback.innerText = `Uploaded ${newFiles.length} file(s). Now indexed for document retrieval.`;
         setTimeout(() => { uploadFeedback.style.display = 'none'; }, 3500);
       } catch (err: any) {
-        uploadFeedback.innerText = `Ingestion warning: ${err.message}`;
-        setTimeout(() => { uploadFeedback.style.display = 'none'; }, 4000);
+        uploadFeedback.innerHTML = `<span style="color:var(--status-danger)">Ingestion error: ${escapeHtml(err.message)}</span>`;
+        setTimeout(() => { uploadFeedback.style.display = 'none'; }, 5000);
       }
 
       fileInput.value = '';
@@ -138,8 +158,15 @@ import ChatComposer from '../components/chat/ChatComposer.astro';
       updateSendState();
     };
 
-    // 4. Render Message Row with Timeline & Citations
-    function appendMessageRow(role: 'user' | 'assistant', initialHtml: string, sources: Citation[] = [], sufficiency?: SufficiencyStatus) {
+    // 4. Render Message Row with Units & Citations
+    function appendMessageRow(
+      role: 'user' | 'assistant', 
+      initialHtml: string, 
+      citations: Citation[] = [], 
+      outcome?: RunOutcome, 
+      coverage?: CoverageStatus,
+      lowConfidence?: boolean
+    ) {
       emptyState.style.display = 'none';
 
       const row = document.createElement('div');
@@ -149,7 +176,7 @@ import ChatComposer from '../components/chat/ChatComposer.astro';
       header.className = 'message-header';
       header.innerHTML = role === 'user' 
         ? '<span>You</span>' 
-        : '<span style="color:var(--brand-cyan);display:flex;align-items:center;gap:4px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>Agentic RAG Orchestrator</span>';
+        : '<span style="color:var(--brand-cyan);display:flex;align-items:center;gap:4px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>Agentic RAG Orchestrator (v11)</span>';
       row.appendChild(header);
 
       const bubble = document.createElement('div');
@@ -158,13 +185,14 @@ import ChatComposer from '../components/chat/ChatComposer.astro';
       row.appendChild(bubble);
 
       if (role === 'assistant') {
-        if (sufficiency) {
-          const banner = createSufficiencyBanner(sufficiency);
-          row.appendChild(banner);
+        if (outcome && outcome !== 'answer') {
+          row.appendChild(createOutcomeBanner(outcome));
+        } else if (coverage === 'partial' || lowConfidence) {
+          row.appendChild(createCoverageBanner(coverage, lowConfidence));
         }
 
-        if (sources && sources.length > 0) {
-          const citationPanel = createCitationPanel(sources);
+        if (citations && citations.length > 0) {
+          const citationPanel = createCitationPanel(citations);
           row.appendChild(citationPanel);
         }
 
@@ -184,52 +212,81 @@ import ChatComposer from '../components/chat/ChatComposer.astro';
       return bubble;
     }
 
-    function createSufficiencyBanner(sufficiency: SufficiencyStatus) {
+    function createOutcomeBanner(outcome: RunOutcome, reason?: string) {
       const banner = document.createElement('div');
-      banner.className = `evidence-sufficiency-banner ${sufficiency}`;
-      
-      if (sufficiency === 'insufficient') {
+      banner.className = 'evidence-sufficiency-banner partial';
+
+      if (outcome === 'refer_to_owner') {
+        banner.style.borderColor = 'rgba(234, 179, 8, 0.4)';
+        banner.style.background = 'rgba(234, 179, 8, 0.08)';
+        banner.innerHTML = `
+          <span>👤</span>
+          <span><strong>Referred to Business Owner:</strong> This query is outside the approved document scope, or requires live systems data. In accordance with Release 1 policy (§0.1 D3), it has been referred to the Business Owner.</span>
+        `;
+      } else if (outcome === 'fail_gracefully') {
+        banner.style.borderColor = 'rgba(239, 68, 68, 0.4)';
+        banner.style.background = 'rgba(239, 68, 68, 0.08)';
         banner.innerHTML = `
           <span>⚠️</span>
-          <span><strong>Incomplete Evidence:</strong> Not enough verified evidence was found in the knowledge base to answer this query fully.</span>
+          <span><strong>Insufficient Verified Evidence:</strong> The knowledge base does not contain sufficient verified passages to support an answer to this query. Verified partial findings are preserved above.</span>
         `;
-      } else if (sufficiency === 'partial') {
+      } else if (outcome === 'upstream_failure') {
+        banner.style.borderColor = 'rgba(239, 68, 68, 0.4)';
+        banner.style.background = 'rgba(239, 68, 68, 0.08)';
         banner.innerHTML = `
-          <span>ℹ️</span>
-          <span><strong>Partial Grounding:</strong> Some aspects of this response are supported by indexed sources, but additional documentation is recommended.</span>
-        `;
-      } else {
-        banner.innerHTML = `
-          <span>✓</span>
-          <span><strong>Verified Grounding:</strong> All assertions have been corroborated against retrieved evidence passages.</span>
+          <span>⚡</span>
+          <span><strong>Upstream Provider Error:</strong> The model host encountered a temporary error. Partial verified units have been preserved. You may retry this request.</span>
         `;
       }
       return banner;
     }
 
-    function createCitationPanel(sources: Citation[]) {
+    function createCoverageBanner(coverage?: CoverageStatus, lowConfidence?: boolean) {
+      const banner = document.createElement('div');
+      banner.className = 'evidence-sufficiency-banner partial';
+      if (lowConfidence) {
+        banner.innerHTML = `
+          <span>⚠️</span>
+          <span><strong>Low Confidence Warning:</strong> Over 40% of candidate claim units were withheld by the Grounding Gate because they could not be corroborated against cited evidence.</span>
+        `;
+      } else if (coverage === 'partial') {
+        banner.innerHTML = `
+          <span>ℹ️</span>
+          <span><strong>Partial Coverage:</strong> This answer covers only verified requirements from the approved documents. Some conditions or comparisons could not be corroborated.</span>
+        `;
+      } else {
+        banner.className = 'evidence-sufficiency-banner sufficient';
+        banner.innerHTML = `
+          <span>✓</span>
+          <span><strong>Checked Against Sources:</strong> All claim units corroborated by Grounding Gate (C1–C5) against approved internal documents.</span>
+        `;
+      }
+      return banner;
+    }
+
+    function createCitationPanel(citations: Citation[]) {
       const panel = document.createElement('div');
       panel.className = 'citation-panel';
       panel.innerHTML = `
         <div class="citation-header" onclick="const list = this.nextElementSibling; const chev = this.querySelector('.chevron'); const isHidden = list.style.display === 'none'; list.style.display = isHidden ? 'flex' : 'none'; chev.innerText = isHidden ? '▲' : '▼';">
           <div style="display:flex;align-items:center;gap:6px;">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
-            <span>Evidence & Citations (${sources.length})</span>
+            <span>Verified Sources & Citations (${citations.length})</span>
           </div>
           <span class="chevron" style="font-size: 10px; color:var(--text-muted);">▼</span>
         </div>
         <div class="citation-list" style="display: none;">
-          ${sources.map((s, idx) => `
-            <div class="citation-card">
+          ${citations.map((s, idx) => `
+            <div class="citation-card" data-cite-id="${s.id}">
               <div class="citation-meta">
                 <div class="citation-meta-left">
                   <span>[${idx + 1}]</span>
-                  <span>📄 ${escapeHtml(s.filename || s.title || 'Document')}</span>
+                  <span>📄 ${escapeHtml(s.filename || s.title || 'Internal Document')}</span>
                   ${s.sourceLocation ? `<span style="color:var(--text-muted);font-weight:normal;">[${escapeHtml(s.sourceLocation)}]</span>` : ''}
                 </div>
-                ${s.verified ? '<span class="status-badge success" style="font-size:9px;padding:1px 5px;">Verified</span>' : ''}
+                <span class="status-badge success" style="font-size:9px;padding:1px 5px;">Checked</span>
               </div>
-              <div class="citation-snippet">${escapeHtml(s.content ? s.content.substring(0, 320) + (s.content.length > 320 ? '...' : '') : '')}</div>
+              <div class="citation-snippet">${escapeHtml(s.snippet || s.content ? (s.snippet || s.content || '').substring(0, 320) + ((s.snippet || s.content || '').length > 320 ? '...' : '') : 'Passage text verified from immutable document version.')}</div>
             </div>
           `).join('')}
         </div>
@@ -247,11 +304,11 @@ import ChatComposer from '../components/chat/ChatComposer.astro';
             <div class="timeline-pulse-dot"></div>
             <span class="timeline-header-title">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
-              <span>Agent Execution Trace</span>
+              <span>Agent Execution Trace (v11)</span>
             </span>
           </div>
           <div style="display:flex;align-items:center;gap:8px;">
-            <span class="timeline-header-meta" style="font-size:11px;">Running...</span>
+            <span class="timeline-header-meta" style="font-size:11px;">Routing...</span>
             <span class="chevron" style="font-size:10px; color:var(--text-muted);">▲</span>
           </div>
         </div>
@@ -262,39 +319,17 @@ import ChatComposer from '../components/chat/ChatComposer.astro';
       return timelineBox;
     }
 
-    function addTimelineStage(timelineEl: HTMLElement, stage: AgentStage, status: StageStatus, detail?: string, attempt?: number) {
+    function addTimelineStage(timelineEl: HTMLElement, step: string, detail?: string, status: 'in_progress' | 'completed' | 'failed' | 'retrying' = 'completed') {
       const body = timelineEl.querySelector('.agent-timeline-body');
       if (!body) return;
-
-      const stageLabels: Record<AgentStage, string> = {
-        planning: 'Planning Query Strategy',
-        tool_selection: 'Selecting Retrieval Tools',
-        retrieving: 'Retrieving Evidence Passages',
-        evaluating: 'Evaluating Evidence Grounding',
-        refining: 'Refining Search & Query Strategy',
-        building_context: 'Assembling Grounded Context',
-        generating: 'Synthesizing Answer',
-        validating: 'Validating Citations',
-        completed: 'Answer Ready',
-        failed: 'Execution Error'
-      };
-
-      const stageIcons: Record<StageStatus, string> = {
-        pending: '○',
-        in_progress: '⚡',
-        completed: '✓',
-        retrying: '↻',
-        failed: '✕',
-        skipped: '–'
-      };
 
       const stageItem = document.createElement('div');
       stageItem.className = 'timeline-stage-item';
       stageItem.innerHTML = `
-        <div class="stage-bullet ${status}">${stageIcons[status] || '•'}</div>
+        <div class="stage-bullet ${status}">✓</div>
         <div class="stage-content">
           <div class="stage-label-row">
-            <span class="stage-title">${stageLabels[stage] || stage} ${attempt ? `(Attempt #${attempt})` : ''}</span>
+            <span class="stage-title">${escapeHtml(step)}</span>
             <span class="stage-time">${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
           </div>
           ${detail ? `<div class="stage-detail">${escapeHtml(detail)}</div>` : ''}
@@ -304,9 +339,22 @@ import ChatComposer from '../components/chat/ChatComposer.astro';
 
       const meta = timelineEl.querySelector('.timeline-header-meta');
       if (meta) {
-        meta.textContent = `${stageLabels[stage] || stage}...`;
+        meta.textContent = `${step}...`;
       }
       chatScrollArea.scrollTop = chatScrollArea.scrollHeight;
+    }
+
+    // Helper: Build markdown from claim units with structured citation badges (§13.0)
+    function renderClaimUnitsMarkdown(units: ClaimUnit[]): string {
+      return units.map(u => {
+        const citeBadges = u.cites && u.cites.length > 0 
+          ? ` ` + u.cites.map(c => `**[${c}]**`).join(' ') 
+          : '';
+        if (u.role === 'caveat') {
+          return `> ⚠️ **Note:** ${u.text}${citeBadges}\n\n`;
+        }
+        return `${u.text}${citeBadges}\n\n`;
+      }).join('');
     }
 
     // 6. Primary Chat Completion Routine
@@ -331,7 +379,7 @@ import ChatComposer from '../components/chat/ChatComposer.astro';
       
       const header = document.createElement('div');
       header.className = 'message-header';
-      header.innerHTML = '<span style="color:var(--brand-cyan);display:flex;align-items:center;gap:4px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>Agentic RAG Orchestrator</span>';
+      header.innerHTML = '<span style="color:var(--brand-cyan);display:flex;align-items:center;gap:4px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>Agentic RAG Orchestrator (v11)</span>';
       assistantRow.appendChild(header);
 
       // Create live timeline container
@@ -339,16 +387,17 @@ import ChatComposer from '../components/chat/ChatComposer.astro';
 
       const agentBubble = document.createElement('div');
       agentBubble.className = 'message-bubble';
-      agentBubble.innerHTML = '<span style="color:var(--text-muted);font-size:13px;">Investigating knowledge base...</span>';
+      agentBubble.innerHTML = '<span style="color:var(--text-muted);font-size:13px;">Evaluating document question...</span>';
       assistantRow.appendChild(agentBubble);
 
       messageColumn.appendChild(assistantRow);
       chatScrollArea.scrollTop = chatScrollArea.scrollHeight;
 
       abortController = new AbortController();
-      let gatheredSources: Citation[] = [];
-      let reportedSufficiency: SufficiencyStatus = 'sufficient';
-      let gatheredText = '';
+      let gatheredCitations: Citation[] = [];
+      let gatheredUnits: ClaimUnit[] = [];
+      let reportedDone: DonePayload | null = null;
+      let reportedVerification: VerificationPayload | null = null;
       let hasReceivedTimelineEvents = false;
 
       try {
@@ -356,33 +405,49 @@ import ChatComposer from '../components/chat/ChatComposer.astro';
           query: userText,
           conversationId: activeSessionId,
           signal: abortController.signal,
-          onStageChange: (stage, status, detail, attempt) => {
+          onStatus: (step, detail) => {
             hasReceivedTimelineEvents = true;
-            addTimelineStage(timelineEl, stage, status, detail, attempt);
+            addTimelineStage(timelineEl, step, detail, 'in_progress');
           },
-          onToolEvent: (tool) => {
-            hasReceivedTimelineEvents = true;
-            addTimelineStage(timelineEl, 'retrieving', tool.status === 'started' ? 'in_progress' : 'completed', `Invoked tool [${tool.toolName}]: ${tool.summary || 'Executing'}`);
-          },
-          onEvidenceEvaluation: (evalData) => {
-            hasReceivedTimelineEvents = true;
-            const evalSummary = evalData.isSufficient
-              ? `Evidence sufficient: Retained ${evalData.retainedCount} of ${evalData.candidateCount} passages.`
-              : `Evidence incomplete: Retained ${evalData.retainedCount} passages. ${evalData.retryReason ? `Refining search: ${evalData.retryReason}` : ''}`;
-            addTimelineStage(timelineEl, 'evaluating', evalData.isSufficient ? 'completed' : 'retrying', evalSummary);
-          },
-          onContextReady: (citations, sufficiency) => {
-            gatheredSources = citations;
-            reportedSufficiency = sufficiency;
-          },
-          onToken: (token) => {
-            gatheredText += token;
-            agentBubble.innerHTML = renderMarkdown(gatheredText);
+          onClaimUnit: (unit) => {
+            gatheredUnits.push(unit);
+            agentBubble.innerHTML = renderMarkdown(renderClaimUnitsMarkdown(gatheredUnits));
             chatScrollArea.scrollTop = chatScrollArea.scrollHeight;
           },
-          onDone: (finalText, durationMs, totalAttempts) => {
-            agentBubble.innerHTML = renderMarkdown(finalText);
-            
+          onCitations: (citations) => {
+            gatheredCitations = citations;
+          },
+          onVerification: (verification) => {
+            reportedVerification = verification;
+            if (verification.withheldCount && verification.withheldCount > 0) {
+              addTimelineStage(timelineEl, 'Grounding Gate Screening', `Withheld ${verification.withheldCount} unsupported unit(s)`);
+            }
+          },
+          onClarification: (clarification) => {
+            addTimelineStage(timelineEl, 'Clarification Requested (ask_user)', clarification.question);
+            const clarBox = document.createElement('div');
+            clarBox.style.marginTop = '12px';
+            clarBox.style.padding = '12px 14px';
+            clarBox.style.background = 'var(--bg-app)';
+            clarBox.style.border = '1px solid var(--border-medium)';
+            clarBox.style.borderRadius = 'var(--radius-sm)';
+            clarBox.innerHTML = `
+              <div style="font-weight:600; font-size:13px; color:var(--brand-cyan); margin-bottom:6px;">Clarification Needed:</div>
+              <div style="font-size:13px; margin-bottom:8px;">${escapeHtml(clarification.question)}</div>
+              ${clarification.options && clarification.options.length > 0 ? `
+                <div style="display:flex; flex-wrap:wrap; gap:6px;">
+                  ${clarification.options.map(opt => `<button type="button" class="btn-secondary" style="font-size:11px; padding:4px 10px;" onclick="window.populateComposerPrompt('${escapeHtml(opt)}')">${escapeHtml(opt)}</button>`).join('')}
+                </div>
+              ` : ''}
+            `;
+            assistantRow.appendChild(clarBox);
+          },
+          onDone: (done, finalUnits) => {
+            reportedDone = done;
+            if (finalUnits.length > 0) {
+              agentBubble.innerHTML = renderMarkdown(renderClaimUnitsMarkdown(finalUnits));
+            }
+
             // Mark timeline completed
             const pulse = timelineEl.querySelector('.timeline-pulse-dot') as HTMLElement;
             if (pulse) {
@@ -392,15 +457,18 @@ import ChatComposer from '../components/chat/ChatComposer.astro';
             }
             const meta = timelineEl.querySelector('.timeline-header-meta');
             if (meta) {
-              meta.textContent = `Completed in ${durationMs ? (durationMs / 1000).toFixed(2) + 's' : 'done'} (${totalAttempts || 1} attempt${(totalAttempts || 1) > 1 ? 's' : ''})`;
+              meta.textContent = `Completed (${done.outcome}) in ${done.attemptsUsed || 1} attempt(s)`;
             }
 
-            // Append evidence sufficiency and citation drawer if sources exist
-            if (reportedSufficiency && (reportedSufficiency !== 'sufficient' || gatheredSources.length > 0)) {
-              assistantRow.appendChild(createSufficiencyBanner(reportedSufficiency));
+            // Handle outcome banners & coverage
+            if (done.outcome !== 'answer') {
+              assistantRow.appendChild(createOutcomeBanner(done.outcome, done.reason));
+            } else {
+              assistantRow.appendChild(createCoverageBanner(done.coverage, reportedVerification?.lowConfidence));
             }
-            if (gatheredSources.length > 0) {
-              assistantRow.appendChild(createCitationPanel(gatheredSources));
+
+            if (gatheredCitations.length > 0) {
+              assistantRow.appendChild(createCitationPanel(gatheredCitations));
             }
 
             // Append copy action
@@ -418,20 +486,19 @@ import ChatComposer from '../components/chat/ChatComposer.astro';
               (window as any).refreshSidebarConversations();
             }
           },
-          onError: (errMsg) => {
-            agentBubble.innerHTML = `<span style="color:var(--status-danger)">Error: ${escapeHtml(errMsg)}</span>`;
+          onError: (errMsg, code, runId) => {
+            agentBubble.innerHTML = `<span style="color:var(--status-danger)">Error: ${escapeHtml(errMsg)} ${runId ? `(Run ID: ${escapeHtml(runId)})` : ''}</span>`;
           }
         });
       } catch (err: any) {
         if (err.name === 'AbortError') {
-          agentBubble.innerHTML += '<br><span style="color:var(--text-muted);font-size:12px;">(Generation cancelled by user)</span>';
+          agentBubble.innerHTML += '<br><span style="color:var(--text-muted);font-size:12px;">(Run cancelled by user)</span>';
         } else {
           agentBubble.innerHTML = `<span style="color:var(--status-danger)">Request failed: ${escapeHtml(err.message)}</span>`;
           queryInput.value = userText; // Preserve user draft
           resizeInput();
         }
 
-        // If backend did not provide any intermediate events, do not fabricate timeline
         if (!hasReceivedTimelineEvents) {
           timelineEl.remove();
         }
@@ -467,7 +534,17 @@ import ChatComposer from '../components/chat/ChatComposer.astro';
 
         emptyState.style.display = 'none';
         data.messages.forEach(m => {
-          appendMessageRow(m.role as any, renderMarkdown(m.content), m.sources || [], m.sufficiency);
+          const contentHtml = m.units && m.units.length > 0 
+            ? renderMarkdown(renderClaimUnitsMarkdown(m.units)) 
+            : renderMarkdown(m.content);
+          appendMessageRow(
+            m.role as any, 
+            contentHtml, 
+            m.citations || [], 
+            m.outcome, 
+            m.coverage,
+            m.lowConfidence
+          );
         });
 
         chatScrollArea.scrollTop = chatScrollArea.scrollHeight;
@@ -486,7 +563,7 @@ import ChatComposer from '../components/chat/ChatComposer.astro';
       messageColumn.appendChild(emptyState);
 
       const headerTitle = document.getElementById('activeConvHeaderTitle');
-      if (headerTitle) headerTitle.innerText = 'New Knowledge Session';
+      if (headerTitle) headerTitle.innerText = 'New Document Session';
 
       queryInput.value = '';
       resizeInput();

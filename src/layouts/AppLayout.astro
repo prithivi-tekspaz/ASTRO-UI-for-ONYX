@@ -122,9 +122,9 @@ const {
         const activeId = localStorage.getItem('onyx_session_id') || '';
 
         try {
-          const res = await fetch('/api/conversations');
-          if (!res.ok) throw new Error('Failed to load conversations');
-          const convs = await res.json();
+          // Dynamic import of v11 api client
+          const { listConversations } = await import('../lib/rag/api');
+          const convs = await listConversations();
           convList.innerHTML = '';
 
           if (!convs || convs.length === 0) {
@@ -178,12 +178,9 @@ const {
       window.deleteSidebarConversation = async function(convId, title) {
         if (!confirm(`Are you sure you want to delete "${title}"?`)) return;
         try {
-          const res = await fetch('/api/conversations/delete', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ conversation_id: convId })
-          });
-          if (res.ok) {
+          const { deleteConversation } = await import('../lib/rag/api');
+          const ok = await deleteConversation(convId);
+          if (ok) {
             const currentActive = localStorage.getItem('onyx_session_id');
             if (currentActive === convId) {
               if (window.startNewChat) {
