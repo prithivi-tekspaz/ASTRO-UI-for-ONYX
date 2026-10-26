@@ -299,7 +299,194 @@
   background-color: var(--bg-surface-hover);
 }
 
-/* Citations & Sources Panel */
+/* ==========================================================================
+   Real-Time Agent Execution Timeline
+   ========================================================================== */
+.agent-timeline-container {
+  width: 100%;
+  margin-top: var(--space-2);
+  margin-bottom: var(--space-2);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  background-color: var(--bg-surface);
+  overflow: hidden;
+  font-size: var(--text-xs);
+  animation: fadeIn 0.25s ease-out;
+}
+
+.agent-timeline-header {
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  user-select: none;
+  background-color: rgba(255, 255, 255, 0.02);
+  border-bottom: 1px solid transparent;
+  transition: background-color var(--trans-fast);
+}
+
+.agent-timeline-header:hover {
+  background-color: var(--bg-surface-hover);
+}
+
+.agent-timeline-header.open {
+  border-bottom-color: var(--border-subtle);
+}
+
+.timeline-header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.timeline-pulse-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: var(--radius-full);
+  background-color: var(--brand-cyan);
+  box-shadow: 0 0 8px var(--brand-cyan);
+  animation: pulseTimeline 1.5s infinite;
+}
+
+.timeline-header-title {
+  font-weight: 600;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.timeline-header-meta {
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.agent-timeline-body {
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background-color: var(--bg-app);
+}
+
+.timeline-stage-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  position: relative;
+}
+
+.stage-bullet {
+  width: 18px;
+  height: 18px;
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.stage-bullet.in_progress {
+  background-color: var(--agent-retrieving-bg);
+  color: var(--agent-retrieving);
+  border: 1px solid var(--agent-retrieving);
+}
+
+.stage-bullet.completed {
+  background-color: var(--agent-grounded-bg);
+  color: var(--agent-grounded);
+  border: 1px solid var(--agent-grounded);
+}
+
+.stage-bullet.retrying {
+  background-color: var(--agent-retry-bg);
+  color: var(--agent-retry);
+  border: 1px solid var(--agent-retry);
+}
+
+.stage-bullet.failed {
+  background-color: var(--status-danger-bg);
+  color: var(--status-danger);
+  border: 1px solid var(--status-danger);
+}
+
+.stage-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.stage-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.stage-title {
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.stage-time {
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 10px;
+}
+
+.stage-detail {
+  color: var(--text-secondary);
+  line-height: 1.45;
+  font-size: 11.5px;
+}
+
+.stage-badge-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 6px;
+  border-radius: var(--radius-xs);
+  font-size: 10px;
+  font-weight: 600;
+  margin-top: 4px;
+  align-self: flex-start;
+}
+
+/* ==========================================================================
+   Evidence Sufficiency & Citations Panel
+   ========================================================================== */
+.evidence-sufficiency-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  font-size: var(--text-xs);
+  margin-top: var(--space-2);
+}
+
+.evidence-sufficiency-banner.insufficient {
+  background-color: var(--status-warning-bg);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  color: var(--status-warning);
+}
+
+.evidence-sufficiency-banner.sufficient {
+  background-color: var(--agent-grounded-bg);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  color: var(--agent-grounded);
+}
+
+.evidence-sufficiency-banner.partial {
+  background-color: rgba(99, 102, 241, 0.1);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  color: var(--brand-primary);
+}
+
 .citation-panel {
   width: 100%;
   margin-top: var(--space-2);
@@ -339,20 +526,37 @@
   background-color: var(--bg-app);
   border: 1px solid var(--border-subtle);
   font-size: var(--text-xs);
+  transition: border-color var(--trans-fast);
+}
+
+.citation-card:hover {
+  border-color: var(--border-medium);
 }
 
 .citation-meta {
   display: flex;
   align-items: center;
-  gap: 6px;
+  justify-content: space-between;
   color: var(--brand-cyan);
   font-weight: 600;
   margin-bottom: 4px;
 }
 
+.citation-meta-left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .citation-snippet {
   color: var(--text-secondary);
   line-height: 1.5;
+}
+
+@keyframes pulseTimeline {
+  0% { transform: scale(0.95); opacity: 0.6; }
+  50% { transform: scale(1.15); opacity: 1; }
+  100% { transform: scale(0.95); opacity: 0.6; }
 }
 
 /* Message Actions Bar */

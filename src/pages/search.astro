@@ -1,15 +1,25 @@
 ---
 // src/pages/search.astro
-// Onyx Knowledge Workspace — Dedicated Search Experience
+// Dedicated Knowledge Retrieval & Strategy Selection Interface
 import AppLayout from '../layouts/AppLayout.astro';
 ---
 
-<AppLayout title="Search — Onyx Knowledge Workspace" activeRoute="search" pageTitle="Search">
+<AppLayout title="Search — Rust Knowledge Agent" activeRoute="search" pageTitle="Search">
   <div class="page-workspace">
     <div class="page-header">
       <div class="page-title-group">
-        <h1 class="page-title">Enterprise Knowledge Search</h1>
-        <p class="page-subtitle">Cross-document semantic retrieval across indexing vaults and attached sources</p>
+        <h1 class="page-title">Knowledge Retrieval</h1>
+        <p class="page-subtitle">Multi-strategy candidate retrieval across indexed vector vaults and documents</p>
+      </div>
+
+      <!-- Strategy Selector -->
+      <div style="display:flex; align-items:center; gap:8px;">
+        <label for="retrievalStrategySelect" style="font-size:var(--text-xs); color:var(--text-muted); font-weight:600;">Strategy:</label>
+        <select id="retrievalStrategySelect" class="btn-secondary" style="padding:6px 12px; font-size:var(--text-xs); border-radius:var(--radius-sm); outline:none; background:var(--bg-surface); color:var(--text-main);">
+          <option value="hybrid" selected>Hybrid (Dense + Sparse)</option>
+          <option value="semantic">Semantic (Dense Vector)</option>
+          <option value="keyword">Keyword (Sparse BM25)</option>
+        </select>
       </div>
     </div>
 
@@ -24,17 +34,15 @@ import AppLayout from '../layouts/AppLayout.astro';
           <input 
             type="search" 
             id="searchQuery" 
-            placeholder="Search across all ingested documents, code, and guides..." 
+            placeholder="Search passages, code signatures, or technical documentation..." 
             autocomplete="off"
             required
           />
           <button type="submit" class="btn-primary" id="searchSubmitBtn">Search</button>
         </form>
 
-        <!-- Development Mode Contract Banner -->
-        <div class="dev-mock-banner">
-          <span>⚙️</span>
-          <span><strong>Onyx Integration Adapter:</strong> Connected to development search schema. Verification pending from backend team.</span>
+        <!-- Live Server Status Indicator -->
+        <div id="searchConnectionNote" style="display:none; font-size:12px; padding:8px 12px; border-radius:var(--radius-sm); background:rgba(239, 68, 68, 0.08); border:1px solid rgba(239, 68, 68, 0.2); color:var(--status-danger);">
         </div>
 
         <!-- Dynamic Results Container -->
@@ -46,63 +54,82 @@ import AppLayout from '../layouts/AppLayout.astro';
         <!-- Initial Search Empty State -->
         <div id="searchInitialState" style="text-align: center; padding: 48px 16px; color: var(--text-muted);">
           <div style="font-size: 32px; margin-bottom: 8px;">🔍</div>
-          <h2 style="font-size: 16px; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px;">Enter a query to search</h2>
-          <p style="font-size: 13px;">Search semantic chunks, exact code signatures, or technical specifications.</p>
+          <h2 style="font-size: 16px; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px;">Enter a query to retrieve passages</h2>
+          <p style="font-size: 13px;">Passages retrieved here represent candidate evidence before evaluation by the RAG orchestrator.</p>
         </div>
       </div>
     </div>
   </div>
 
   <script>
-    import { searchKnowledge } from '../lib/onyx/search';
+    import { searchKnowledge } from '../lib/rag/api';
     import { escapeHtml } from '../lib/onyx/markdown';
+    import type { RetrievalStrategy } from '../lib/rag/types';
 
     const form = document.getElementById('searchForm') as HTMLFormElement;
     const input = document.getElementById('searchQuery') as HTMLInputElement;
-    const resultsSection = document.getElementById('searchResultsSection')!;
+    const strategySelect = document.getElementById('retrievalStrategySelect') as HTMLSelectElement;
     const resultsCount = document.getElementById('resultsCount')!;
     const resultsList = document.getElementById('resultsList')!;
     const initialState = document.getElementById('searchInitialState')!;
+    const connectionNote = document.getElementById('searchConnectionNote')!;
 
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       const query = input.value.trim();
       if (!query) return;
 
+      connectionNote.style.display = 'none';
       initialState.style.display = 'none';
-      resultsList.innerHTML = '<div style="color:var(--text-muted);font-size:13px;">Searching knowledge base...</div>';
+      resultsList.innerHTML = '<div style="color:var(--text-muted);font-size:13px;padding:12px 0;">Retrieving candidate passages from Rust backend...</div>';
+
+      const strategy = (strategySelect.value || 'hybrid') as RetrievalStrategy;
 
       try {
-        const results = await searchKnowledge(query);
-        resultsCount.innerText = `${results.length} result(s) found`;
+        const results = await searchKnowledge(query, strategy);
+        resultsCount.innerText = `${results.length} candidate passage(s) retrieved via [${strategy}]`;
         resultsList.innerHTML = '';
 
         if (results.length === 0) {
-          resultsList.innerHTML = '<div style="color:var(--text-muted);font-size:13px;">No matching documents found.</div>';
+          resultsList.innerHTML = '<div style="color:var(--text-muted);font-size:13px;padding:12px 0;">No matching candidate passages found in knowledge base.</div>';
           return;
         }
 
-        results.forEach(res => {
+        results.forEach((res, idx) => {
           const card = document.createElement('div');
           card.className = 'onyx-card';
           card.innerHTML = `
             <div class="onyx-card-header" style="margin-bottom:8px;">
-              <span class="onyx-card-title">${escapeHtml(res.title)}</span>
-              <span class="status-badge info">${res.sourceLocation || 'Document'}</span>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <span style="font-size:11px;font-family:var(--font-mono);color:var(--text-muted);">#${idx + 1}</span>
+                <span class="onyx-card-title">${escapeHtml(res.title)}</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:6px;">
+                ${res.sourceLocation ? `<span class="status-badge info" style="font-size:10px;">${escapeHtml(res.sourceLocation)}</span>` : ''}
+                <span class="status-badge" style="font-size:10px;background:rgba(255,255,255,0.06);color:var(--text-secondary);">${res.strategy || strategy}</span>
+              </div>
             </div>
             <p style="font-size:var(--text-sm);color:var(--text-secondary);line-height:1.6;margin-bottom:12px;">
               ${escapeHtml(res.snippet)}
             </p>
-            <div style="display:flex;align-items:center;justify-content:space-between;font-size:var(--text-xs);color:var(--text-muted);">
-              <span>Match Confidence: <strong>${Math.round(res.score * 100)}%</strong></span>
-              <a href="/" class="btn-secondary" style="padding:4px 10px;font-size:11px;" onclick="localStorage.setItem('onyx_prefill_query', 'Explain ${escapeHtml(res.title)}')">Open in Chat</a>
+            <div style="display:flex;align-items:center;justify-content:space-between;font-size:var(--text-xs);color:var(--text-muted);border-top:1px solid var(--border-subtle);padding-top:10px;">
+              <span>Score: <strong style="font-family:var(--font-mono);">${res.score.toFixed(3)}</strong></span>
+              <button class="btn-secondary" style="padding:4px 10px;font-size:11px;" onclick="window.useInChat('${escapeHtml(res.title.replace(/'/g, ''))}')">Investigate in Chat &rarr;</button>
             </div>
           `;
           resultsList.appendChild(card);
         });
       } catch (err: any) {
-        resultsList.innerHTML = `<div style="color:var(--status-danger);font-size:13px;">Search failed: ${escapeHtml(err.message)}</div>`;
+        resultsCount.innerText = '';
+        resultsList.innerHTML = '';
+        connectionNote.style.display = 'block';
+        connectionNote.innerText = `Search error: ${err.message}. Ensure the Rust backend service is running.`;
       }
     });
+
+    (window as any).useInChat = function(title: string) {
+      localStorage.setItem('onyx_prefill_query', `Investigate and cite evidence regarding: ${title}`);
+      window.location.href = '/';
+    };
   </script>
 </AppLayout>

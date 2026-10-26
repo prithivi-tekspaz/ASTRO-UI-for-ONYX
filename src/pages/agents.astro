@@ -1,65 +1,98 @@
 ---
 // src/pages/agents.astro
-// Onyx Knowledge Workspace — Agents & Tool Activity
+// Agent Activity & Pipeline Execution Diagnostics
 import AppLayout from '../layouts/AppLayout.astro';
 ---
 
-<AppLayout title="Agents — Onyx Knowledge Workspace" activeRoute="agents" pageTitle="Agents">
+<AppLayout title="Agent Activity — Rust Knowledge Agent" activeRoute="agents" pageTitle="Agent Activity">
   <div class="page-workspace">
     <div class="page-header">
       <div class="page-title-group">
-        <h1 class="page-title">Assistants & Specialized Agents</h1>
-        <p class="page-subtitle">Configure domain assistants, persona settings, and autonomous tool workflows</p>
+        <h1 class="page-title">Agent Orchestration & Activity</h1>
+        <p class="page-subtitle">Observable execution traces from the Rust Agentic RAG orchestrator</p>
+      </div>
+      <div style="display:flex; align-items:center; gap:8px;">
+        <span class="status-badge success" id="orchestratorStatusBadge">Orchestrator Ready</span>
       </div>
     </div>
 
     <div class="page-body-scroll">
       <div class="page-content-container">
-        <!-- Development Mode Notice -->
-        <div class="dev-mock-banner">
-          <span>⚙️</span>
-          <span><strong>Onyx Integration Adapter:</strong> Displaying specialized assistants configuration schema. Connects to backend agent endpoints once confirmed.</span>
-        </div>
-
-        <!-- Available Agents List -->
+        <!-- Architecture Overview Card -->
         <div class="onyx-card">
           <div class="onyx-card-header">
             <div>
-              <span class="onyx-card-title">Available Assistants</span>
-              <p style="font-size:var(--text-xs); color:var(--text-muted); margin-top:2px;">Select an agent to route specific domain queries and analysis tasks</p>
+              <span class="onyx-card-title">Orchestrator Pipeline Specification</span>
+              <p style="font-size:var(--text-xs); color:var(--text-muted); margin-top:2px;">Native Axum/Tokio services & RIG agent execution stages</p>
             </div>
           </div>
 
-          <div id="agentsGrid" class="grid-3">
-            <!-- Dynamically populated agents -->
+          <div class="grid-3">
+            <div style="padding:12px; background:var(--bg-app); border:1px solid var(--border-subtle); border-radius:var(--radius-sm); font-size:var(--text-xs); display:flex; flex-direction:column; gap:6px;">
+              <span style="font-weight:600; color:var(--agent-planning);">1. Query Planning</span>
+              <span style="color:var(--text-secondary); line-height:1.5;">Analyzes user intent, checks whether document retrieval is required, and formulates sub-queries.</span>
+            </div>
+
+            <div style="padding:12px; background:var(--bg-app); border:1px solid var(--border-subtle); border-radius:var(--radius-sm); font-size:var(--text-xs); display:flex; flex-direction:column; gap:6px;">
+              <span style="font-weight:600; color:var(--agent-retrieving);">2. Tool-Driven Retrieval</span>
+              <span style="color:var(--text-secondary); line-height:1.5;">Executes dense embedding queries, sparse BM25 lookups, or document section lookups via Axum tools.</span>
+            </div>
+
+            <div style="padding:12px; background:var(--bg-app); border:1px solid var(--border-subtle); border-radius:var(--radius-sm); font-size:var(--text-xs); display:flex; flex-direction:column; gap:6px;">
+              <span style="font-weight:600; color:var(--agent-evaluating);">3. Evidence Evaluation</span>
+              <span style="color:var(--text-secondary); line-height:1.5;">Evaluates candidate passages for relevance and sufficiency. Triggers query rewriting if coverage is incomplete.</span>
+            </div>
+
+            <div style="padding:12px; background:var(--bg-app); border:1px solid var(--border-subtle); border-radius:var(--radius-sm); font-size:var(--text-xs); display:flex; flex-direction:column; gap:6px;">
+              <span style="font-weight:600; color:var(--agent-retry);">4. Strategy Refinement</span>
+              <span style="color:var(--text-secondary); line-height:1.5;">When evidence is insufficient, expands keywords or switches retrieval strategies without showing hidden chain-of-thought.</span>
+            </div>
+
+            <div style="padding:12px; background:var(--bg-app); border:1px solid var(--border-subtle); border-radius:var(--radius-sm); font-size:var(--text-xs); display:flex; flex-direction:column; gap:6px;">
+              <span style="font-weight:600; color:var(--brand-primary);">5. Grounded Context Synthesis</span>
+              <span style="color:var(--text-secondary); line-height:1.5;">Builds prompt context strictly from retained evidence passages and generates an evidence-grounded answer.</span>
+            </div>
+
+            <div style="padding:12px; background:var(--bg-app); border:1px solid var(--border-subtle); border-radius:var(--radius-sm); font-size:var(--text-xs); display:flex; flex-direction:column; gap:6px;">
+              <span style="font-weight:600; color:var(--agent-grounded);">6. Citation Validation</span>
+              <span style="color:var(--text-secondary); line-height:1.5;">Validates in-text citations against actual evidence passage boundaries before sending the final completion event.</span>
+            </div>
           </div>
         </div>
 
-        <!-- Tool Activity Timeline (Real Event Mapping Contract) -->
+        <!-- Orchestrator Diagnostics & Active Session Trace -->
         <div class="onyx-card">
           <div class="onyx-card-header">
             <div>
-              <span class="onyx-card-title">Recent Tool & Retrieval Activity</span>
-              <p style="font-size:var(--text-xs); color:var(--text-muted); margin-top:2px;">Real-time event stream from agent execution pipeline</p>
+              <span class="onyx-card-title">Active Session Trace & Diagnostics</span>
+              <p style="font-size:var(--text-xs); color:var(--text-muted); margin-top:2px;">Detailed stage tracking from active conversation session</p>
             </div>
-            <span class="status-badge success">Live</span>
+            <a href="/" class="btn-primary" style="font-size:11px; padding:4px 10px;">Return to Chat</a>
           </div>
 
-          <div style="display:flex; flex-direction:column; gap:8px;">
-            <div style="display:flex; align-items:center; justify-content:space-between; padding:10px 12px; border-radius:var(--radius-sm); background-color:var(--bg-app); border:1px solid var(--border-subtle); font-size:var(--text-xs);">
+          <div id="sessionTraceContainer" style="display:flex; flex-direction:column; gap:8px;">
+            <div style="padding:12px 14px; border-radius:var(--radius-sm); background:var(--bg-app); border:1px solid var(--border-subtle); font-size:var(--text-xs); color:var(--text-secondary); display:flex; align-items:center; justify-content:space-between;">
               <div style="display:flex; align-items:center; gap:8px;">
                 <span style="color:var(--brand-cyan);">⚡</span>
-                <span><strong>Vector Retrieval:</strong> Embedded query and retrieved 8 semantic chunks from local knowledge base</span>
+                <span>Active Conversation Session: <strong id="activeSessionDisplay" style="font-family:var(--font-mono); color:var(--text-main);">None</strong></span>
               </div>
-              <span style="color:var(--text-muted);">Completed</span>
+              <span style="color:var(--text-muted);" id="activeSessionStatus">Ready</span>
             </div>
 
-            <div style="display:flex; align-items:center; justify-content:space-between; padding:10px 12px; border-radius:var(--radius-sm); background-color:var(--bg-app); border:1px solid var(--border-subtle); font-size:var(--text-xs);">
+            <div style="padding:12px 14px; border-radius:var(--radius-sm); background:var(--bg-app); border:1px solid var(--border-subtle); font-size:var(--text-xs); color:var(--text-secondary); display:flex; align-items:center; justify-content:space-between;">
               <div style="display:flex; align-items:center; gap:8px;">
                 <span style="color:var(--brand-primary);">📑</span>
-                <span><strong>Citation Synthesis:</strong> Formatted references with source locations (Page 4, Slide 2)</span>
+                <span>Evidence Verification Model: <strong>Deterministic Grounding Check</strong></span>
               </div>
-              <span style="color:var(--text-muted);">Completed</span>
+              <span class="status-badge success" style="font-size:10px;">Active</span>
+            </div>
+
+            <div style="padding:12px 14px; border-radius:var(--radius-sm); background:var(--bg-app); border:1px solid var(--border-subtle); font-size:var(--text-xs); color:var(--text-secondary); display:flex; align-items:center; justify-content:space-between;">
+              <div style="display:flex; align-items:center; gap:8px;">
+                <span style="color:var(--agent-evaluating);">⚖️</span>
+                <span>Sufficiency Threshold: <strong>Precision &gt; 0.70 with source location</strong></span>
+              </div>
+              <span class="status-badge info" style="font-size:10px;">Configured</span>
             </div>
           </div>
         </div>
@@ -68,48 +101,36 @@ import AppLayout from '../layouts/AppLayout.astro';
   </div>
 
   <script>
-    import { listAgents } from '../lib/onyx/search';
-    import { escapeHtml } from '../lib/onyx/markdown';
+    import { checkBackendHealth } from '../lib/rag/client';
 
-    const agentsGrid = document.getElementById('agentsGrid')!;
+    const sessionDisplay = document.getElementById('activeSessionDisplay');
+    const badge = document.getElementById('orchestratorStatusBadge');
 
-    async function loadAgents() {
-      const agents = await listAgents();
-      agentsGrid.innerHTML = '';
+    const activeId = localStorage.getItem('onyx_session_id') || 'None';
+    if (sessionDisplay) sessionDisplay.textContent = activeId;
 
-      agents.forEach(agent => {
-        const card = document.createElement('div');
-        card.className = 'onyx-card';
-        card.style.display = 'flex';
-        card.style.flexDirection = 'column';
-        card.style.justifyContent = 'space-between';
-        card.style.gap = '12px';
-
-        card.innerHTML = `
-          <div>
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-              <span style="font-weight:600;font-size:var(--text-sm);color:var(--text-main);">${escapeHtml(agent.name)}</span>
-              ${agent.isDefault ? '<span class="status-badge info">Default</span>' : ''}
-            </div>
-            <p style="font-size:var(--text-xs);color:var(--text-secondary);line-height:1.5;margin-bottom:12px;">
-              ${escapeHtml(agent.description)}
-            </p>
-            <div style="display:flex;flex-wrap:wrap;gap:4px;">
-              ${agent.capabilities.map(c => `
-                <span style="font-size:10px;padding:2px 6px;border-radius:4px;background-color:var(--bg-app);border:1px solid var(--border-subtle);color:var(--brand-cyan);">
-                  ${escapeHtml(c)}
-                </span>
-              `).join('')}
-            </div>
-          </div>
-          <div style="margin-top:auto;padding-top:12px;border-top:1px solid var(--border-subtle);">
-            <a href="/" class="btn-secondary" style="width:100%;text-align:center;font-size:var(--text-xs);">Start Chat</a>
-          </div>
-        `;
-        agentsGrid.appendChild(card);
-      });
+    async function checkOrchestrator() {
+      try {
+        const health = await checkBackendHealth();
+        if (health.status === 'healthy') {
+          if (badge) {
+            badge.className = 'status-badge success';
+            badge.textContent = 'Orchestrator Live';
+          }
+        } else {
+          if (badge) {
+            badge.className = 'status-badge warning';
+            badge.textContent = 'Backend Offline';
+          }
+        }
+      } catch {
+        if (badge) {
+          badge.className = 'status-badge danger';
+          badge.textContent = 'Disconnected';
+        }
+      }
     }
 
-    loadAgents();
+    checkOrchestrator();
   </script>
 </AppLayout>

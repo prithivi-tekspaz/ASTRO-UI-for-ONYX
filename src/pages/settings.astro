@@ -1,32 +1,72 @@
 ---
 // src/pages/settings.astro
-// Onyx Knowledge Workspace — Settings & Configuration
+// Agentic RAG Workspace Settings & Axum Backend Diagnostics
 import AppLayout from '../layouts/AppLayout.astro';
 ---
 
-<AppLayout title="Settings — Onyx Knowledge Workspace" activeRoute="settings" pageTitle="Settings">
+<AppLayout title="Settings — Rust Knowledge Agent" activeRoute="settings" pageTitle="Settings">
   <div class="page-workspace">
     <div class="page-header">
       <div class="page-title-group">
         <h1 class="page-title">Workspace Settings</h1>
-        <p class="page-subtitle">Personal preferences, visual display modes, and backend connection details</p>
+        <p class="page-subtitle">Personal display modes, Axum/Tokio backend connection status, and retrieval diagnostics</p>
       </div>
+
+      <button class="btn-primary" id="btnTestConnection" style="font-size:12px; padding:6px 14px;">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+        <span>Test Connection</span>
+      </button>
     </div>
 
     <div class="page-body-scroll">
       <div class="page-content-container">
-        <!-- Section 1: Frontend UI Preferences -->
+        <!-- Section 1: Backend Connection & Diagnostics -->
         <div class="onyx-card">
           <div class="onyx-card-header">
-            <span class="onyx-card-title">Display & Appearance</span>
+            <div>
+              <span class="onyx-card-title">Rust Backend Connection Status</span>
+              <p style="font-size:var(--text-xs); color:var(--text-muted); margin-top:2px;">Live health & readiness probes from Axum upstream server</p>
+            </div>
+            <span class="status-badge warning" id="backendStatusBadge">Checking...</span>
+          </div>
+
+          <div style="display:flex; flex-direction:column; gap:10px; font-size:var(--text-xs);">
+            <div style="display:flex; justify-content:space-between; padding:10px 14px; background:var(--bg-app); border:1px solid var(--border-subtle); border-radius:var(--radius-sm);">
+              <span style="color:var(--text-muted);">Backend Origin:</span>
+              <span style="font-family:var(--font-mono); font-weight:600;" id="backendOriginText">http://127.0.0.1:8080</span>
+            </div>
+
+            <div style="display:flex; justify-content:space-between; padding:10px 14px; background:var(--bg-app); border:1px solid var(--border-subtle); border-radius:var(--radius-sm);">
+              <span style="color:var(--text-muted);">Service Framework:</span>
+              <span style="font-family:var(--font-mono); font-weight:600; color:var(--brand-cyan);">Axum + Tokio (Native Rust)</span>
+            </div>
+
+            <div style="display:flex; justify-content:space-between; padding:10px 14px; background:var(--bg-app); border:1px solid var(--border-subtle); border-radius:var(--radius-sm);">
+              <span style="color:var(--text-muted);">Model / Agent Framework:</span>
+              <span style="font-family:var(--font-mono); font-weight:600;" id="agentFrameworkText">RIG / Native Rust Agent</span>
+            </div>
+
+            <div style="display:flex; justify-content:space-between; padding:10px 14px; background:var(--bg-app); border:1px solid var(--border-subtle); border-radius:var(--radius-sm);">
+              <span style="color:var(--text-muted);">Supported Retrieval Strategies:</span>
+              <span style="font-family:var(--font-mono); font-weight:600; color:var(--text-main);">Hybrid, Semantic Dense, BM25 Keyword</span>
+            </div>
+
+            <div id="connectionDiagnosticMsg" style="display:none; padding:8px 12px; border-radius:var(--radius-sm); font-size:12px;"></div>
+          </div>
+        </div>
+
+        <!-- Section 2: Display & Appearance Preferences -->
+        <div class="onyx-card">
+          <div class="onyx-card-header">
+            <span class="onyx-card-title">Display & Visual Preferences</span>
           </div>
 
           <div style="display:flex; flex-direction:column; gap:16px;">
             <!-- Theme Selection -->
             <div style="display:flex; align-items:center; justify-content:space-between;">
               <div>
-                <div style="font-weight:600; font-size:var(--text-sm);">Color Theme</div>
-                <div style="font-size:var(--text-xs); color:var(--text-muted);">Choose between futuristic deep dark and crisp light theme</div>
+                <div style="font-weight:600; font-size:var(--text-sm);">Workspace Theme</div>
+                <div style="font-size:var(--text-xs); color:var(--text-muted);">Default dark engineering aesthetic or light technical mode</div>
               </div>
               <div style="display:flex; gap:8px;">
                 <button class="btn-secondary" id="btnSetThemeDark" style="padding:6px 14px; font-size:12px;">Dark</button>
@@ -36,43 +76,15 @@ import AppLayout from '../layouts/AppLayout.astro';
 
             <div style="height:1px; background:var(--border-subtle);"></div>
 
-            <!-- Reduced Motion -->
+            <!-- Geometric Canvas Particles -->
             <div style="display:flex; align-items:center; justify-content:space-between;">
               <div>
-                <div style="font-weight:600; font-size:var(--text-sm);">3D Background Particles</div>
-                <div style="font-size:var(--text-xs); color:var(--text-muted);">Toggle rotating geometric wireframes and floating network filaments</div>
+                <div style="font-weight:600; font-size:var(--text-sm);">Ambient Geometric Network Background</div>
+                <div style="font-size:var(--text-xs); color:var(--text-muted);">Subtle rotating 3D wireframe solids and particle filaments</div>
               </div>
               <label style="display:inline-flex; align-items:center; cursor:pointer;">
                 <input type="checkbox" id="chkAmbientCanvas" checked style="width:18px; height:18px; accent-color:var(--brand-primary);" />
               </label>
-            </div>
-          </div>
-        </div>
-
-        <!-- Section 2: Backend & Onyx Service Configuration -->
-        <div class="onyx-card">
-          <div class="onyx-card-header">
-            <div>
-              <span class="onyx-card-title">Onyx Upstream Origin</span>
-              <p style="font-size:var(--text-xs); color:var(--text-muted); margin-top:2px;">Configured API proxy and endpoint boundary</p>
-            </div>
-            <span class="status-badge success">Online</span>
-          </div>
-
-          <div style="display:flex; flex-direction:column; gap:12px; font-size:var(--text-xs);">
-            <div style="display:flex; justify-content:space-between; padding:8px 12px; background:var(--bg-app); border:1px solid var(--border-subtle); border-radius:var(--radius-sm);">
-              <span style="color:var(--text-muted);">API Target:</span>
-              <span style="font-family:var(--font-mono); font-weight:600;">http://127.0.0.1:8080</span>
-            </div>
-
-            <div style="display:flex; justify-content:space-between; padding:8px 12px; background:var(--bg-app); border:1px solid var(--border-subtle); border-radius:var(--radius-sm);">
-              <span style="color:var(--text-muted);">Proxy Route:</span>
-              <span style="font-family:var(--font-mono); font-weight:600;">/api/* &rarr; http://127.0.0.1:8080/api/*</span>
-            </div>
-
-            <div style="display:flex; justify-content:space-between; padding:8px 12px; background:var(--bg-app); border:1px solid var(--border-subtle); border-radius:var(--radius-sm);">
-              <span style="color:var(--text-muted);">Astro Dev Server:</span>
-              <span style="font-family:var(--font-mono); font-weight:600;">http://localhost:4321</span>
             </div>
           </div>
         </div>
@@ -81,9 +93,51 @@ import AppLayout from '../layouts/AppLayout.astro';
   </div>
 
   <script>
+    import { checkBackendHealth } from '../lib/rag/client';
+
+    const testBtn = document.getElementById('btnTestConnection')!;
+    const statusBadge = document.getElementById('backendStatusBadge')!;
+    const diagMsg = document.getElementById('connectionDiagnosticMsg')!;
     const darkBtn = document.getElementById('btnSetThemeDark')!;
     const lightBtn = document.getElementById('btnSetThemeLight')!;
     const canvasToggle = document.getElementById('chkAmbientCanvas') as HTMLInputElement;
+
+    async function runHealthCheck() {
+      statusBadge.className = 'status-badge warning';
+      statusBadge.textContent = 'Probing...';
+      diagMsg.style.display = 'none';
+
+      try {
+        const res = await checkBackendHealth();
+        if (res.status === 'healthy') {
+          statusBadge.className = 'status-badge success';
+          statusBadge.textContent = 'Connected (Healthy)';
+          diagMsg.style.display = 'block';
+          diagMsg.style.backgroundColor = 'var(--status-success-bg)';
+          diagMsg.style.border = '1px solid rgba(16, 185, 129, 0.3)';
+          diagMsg.style.color = 'var(--status-success)';
+          diagMsg.textContent = `Backend online. Version: ${res.version || '1.0.0'} • Vector backend: ${res.vectorBackend || 'Native'}`;
+        } else {
+          statusBadge.className = 'status-badge danger';
+          statusBadge.textContent = 'Backend Offline';
+          diagMsg.style.display = 'block';
+          diagMsg.style.backgroundColor = 'var(--status-danger-bg)';
+          diagMsg.style.border = '1px solid rgba(239, 68, 68, 0.3)';
+          diagMsg.style.color = 'var(--status-danger)';
+          diagMsg.textContent = 'Backend server at http://127.0.0.1:8080 did not respond to /api/health probe. Ensure your native Axum service is started.';
+        }
+      } catch (err: any) {
+        statusBadge.className = 'status-badge danger';
+        statusBadge.textContent = 'Unavailable';
+        diagMsg.style.display = 'block';
+        diagMsg.style.backgroundColor = 'var(--status-danger-bg)';
+        diagMsg.style.border = '1px solid rgba(239, 68, 68, 0.3)';
+        diagMsg.style.color = 'var(--status-danger)';
+        diagMsg.textContent = `Connection probe failed: ${err.message}.`;
+      }
+    }
+
+    testBtn.addEventListener('click', runHealthCheck);
 
     darkBtn.addEventListener('click', () => {
       document.documentElement.setAttribute('data-theme', 'dark');
@@ -101,5 +155,8 @@ import AppLayout from '../layouts/AppLayout.astro';
         canvas.style.display = canvasToggle.checked ? 'block' : 'none';
       }
     });
+
+    // Check health on page mount
+    runHealthCheck();
   </script>
 </AppLayout>

@@ -1,0 +1,26 @@
+---
+// src/components/chat/AgentTimeline.astro
+// Real-Time Agent Execution Timeline Component
+---
+
+<div class="agent-timeline-container" id="agentTimelineContainer" style="display:none;">
+  <div class="agent-timeline-header open" id="timelineHeader">
+    <div class="timeline-header-left">
+      <div class="timeline-pulse-dot" id="timelinePulseDot"></div>
+      <span class="timeline-header-title">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+        </svg>
+        <span id="timelineTitleText">Agent Execution Trace</span>
+      </span>
+    </div>
+    <div style="display:flex; align-items:center; gap:8px;">
+      <span class="timeline-header-meta" id="timelineMetaSummary">Planning...</span>
+      <span id="timelineChevron" style="font-size:10px; color:var(--text-muted); transition:transform 0.2s;">▲</span>
+    </div>
+  </div>
+
+  <div class="agent-timeline-body" id="timelineBody">
+    <!-- Populated dynamically as actual backend events arrive -->
+  </div>
+</div>

@@ -1,5 +1,6 @@
 ---
 // src/components/chat/ChatComposer.astro
+// Enhanced Bottom Message Composer with draft preservation and upload progress
 ---
 
 <div class="chat-composer-container">
@@ -24,14 +25,14 @@
         </button>
 
         <!-- Hidden Native File Picker -->
-        <input type="file" id="composerFileInput" multiple style="display: none;" />
+        <input type="file" id="composerFileInput" multiple accept=".pdf,.txt,.md,.json,.csv" style="display: none;" />
 
         <!-- Multiline Textarea Input -->
         <textarea
           id="composerQueryInput"
           class="composer-textarea"
           rows="1"
-          placeholder="Ask anything about your documents... (Shift+Enter for new line)"
+          placeholder="Ask a technical question or investigate evidence... (Enter to send, Shift+Enter for newline)"
           autocomplete="off"
         ></textarea>
 
@@ -41,7 +42,7 @@
             type="button" 
             class="btn-composer-stop" 
             id="composerStopBtn" 
-            title="Stop generation" 
+            title="Cancel generation" 
             style="display: none;"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
@@ -53,7 +54,7 @@
             type="submit" 
             class="btn-composer-send" 
             id="composerSendBtn" 
-            aria-label="Send message" 
+            aria-label="Send query" 
             title="Send query (Enter)" 
             disabled
           >
@@ -66,8 +67,11 @@
       </div>
     </div>
 
+    <!-- Real-time upload progress notification -->
+    <div id="composerUploadFeedback" style="display:none; font-size:11px; color:var(--brand-cyan); margin-top:4px; padding:0 4px;"></div>
+
     <div class="composer-disclaimer">
-      Onyx Knowledge Workspace can synthesize citations. Verify referenced documentation for critical decisions.
+      Answers are synthesized with traceable citations from verified evidence records.
     </div>
   </div>
 </div>
